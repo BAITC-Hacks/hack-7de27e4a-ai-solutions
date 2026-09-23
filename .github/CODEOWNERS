@@ -1,0 +1,28 @@
+# CODEOWNERS — границы владения из docs/ARCHITECTURE.md §8.
+#
+# ⚠️ Чтобы включить: раскомментировать строки и подставить реальные GitHub-логины.
+# С неверными логинами GitHub показывает ошибку в интерфейсе PR, поэтому по умолчанию
+# всё закомментировано.
+#
+# A — Intelligence (Алихан)
+# /src/domain/data/           @GITHUB_LOGIN_ALIKHAN
+# /src/domain/recommendation/ @GITHUB_LOGIN_ALIKHAN
+# /src/lib/contracts/         @GITHUB_LOGIN_ALIKHAN
+# /tests/recommendation/      @GITHUB_LOGIN_ALIKHAN
+#
+# B — Experience (Манахнбет)
+# /src/app/employee/          @GITHUB_LOGIN_MANAHNBET
+# /src/components/employee/   @GITHUB_LOGIN_MANAHNBET
+# /src/domain/simulation/     @GITHUB_LOGIN_MANAHNBET
+# /src/state/                 @GITHUB_LOGIN_MANAHNBET
+# /tests/simulation/          @GITHUB_LOGIN_MANAHNBET
+#
+# C — Trust (Даник)
+# /src/app/hr/                @GITHUB_LOGIN_DANIK
+# /src/app/trust/             @GITHUB_LOGIN_DANIK
+# /src/app/api/ai/            @GITHUB_LOGIN_DANIK
+# /src/components/hr/         @GITHUB_LOGIN_DANIK
+# /src/components/trust/      @GITHUB_LOGIN_DANIK
+# /src/domain/analytics/      @GITHUB_LOGIN_DANIK
+# /src/lib/evaluation/        @GITHUB_LOGIN_DANIK
+# /tests/evaluation/          @GITHUB_LOGIN_DANIK
