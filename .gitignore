@@ -1,0 +1,32 @@
+# dependencies
+node_modules/
+.pnp
+.pnp.js
+
+# next.js
+.next/
+out/
+build/
+*.tsbuildinfo
+
+# testing
+coverage/
+
+# env
+.env
+.env.local
+.env.*.local
+
+# local scratch (не коммитим: генераторы PDF и их вывод)
+tmp/
+output/
+__pycache__/
+*.pyc
+
+# misc
+*.log
+npm-debug.log*
+pnpm-debug.log*
+.DS_Store
+.vscode/
+.idea/
