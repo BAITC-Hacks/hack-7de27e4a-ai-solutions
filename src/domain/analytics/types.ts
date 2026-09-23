@@ -17,8 +17,11 @@ export interface EmployeeAnalytics {
 }
 export interface Participation {
   employeeId: string; activityId: string; status: HistoryStatus; assignedBy: Assignment; mandatory: boolean;
+  /** Preserve source dates; missing dates cannot be assigned to an analysis period. */
+  date?: string | null;
+  historyId?: string;
 }
-export interface AnalyticsInput { employees: readonly EmployeeAnalytics[]; history: readonly Participation[] }
+export interface AnalyticsInput { employees: readonly EmployeeAnalytics[]; history: readonly Participation[]; snapshotDate?: string }
 export interface AnalyticsBridge<Dataset> {
   employeeIds(dataset: Dataset): readonly string[];
   employee(dataset: Dataset, id: string): EmployeeAnalytics;

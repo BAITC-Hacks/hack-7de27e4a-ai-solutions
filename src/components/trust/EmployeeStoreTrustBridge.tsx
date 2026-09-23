@@ -10,6 +10,7 @@ import { buildReviewRequest } from "../../lib/evaluation/explanations";
 import type { EvaluationCase } from "../../lib/evaluation/harness";
 import { createDatasetAuditCases } from "../../lib/evaluation/dataset-audit";
 import { TrustIntegrationProvider, type TrustIntegration } from "./integration";
+import type { AgentSnapshot } from "../../lib/evaluation/agent-tools";
 
 export interface EmployeeStorePort {
   getState(): EmployeeStoreSnapshot;
@@ -74,6 +75,9 @@ export function EmployeeStoreTrustBridge({
             }
           : undefined,
         reviewRequest,
+        agentSnapshot: snapshot.normalizedDataset && snapshot.dataset &&
+          'employees' in snapshot.dataset && 'activities' in snapshot.dataset
+          ? snapshot as AgentSnapshot : undefined,
         coreEvaluationCases:
           coreEvaluationCases ??
           (source

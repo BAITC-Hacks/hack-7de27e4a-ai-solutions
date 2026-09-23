@@ -29,7 +29,7 @@ export interface EmployeeStoreSnapshot {
       }
     >
   >;
-  ledger: readonly { id: string; employeeId: string; activityId: string }[];
+  ledger: readonly { id: string; employeeId: string; activityId: string; effectiveDate?: string; completedAt?: string }[];
 }
 export interface StoreRecommendation {
   activityId: string;
@@ -81,7 +81,9 @@ export function projectEmployeeStore(
         eligibleCandidates: view.candidates.map(impact),
       };
     });
-  const history = projectCoreHistory(source);
+  // B's normalized state already includes session records. Do not count them twice.
+  const history = projectCoreHistory(state.normalizedDataset ?? source);
+  const historyIds = new Set(history.map(row => row.historyId));
   const seen = new Set<string>();
   for (const completion of state.ledger) {
     if (seen.has(completion.id))
@@ -90,13 +92,16 @@ export function projectEmployeeStore(
     const event = source.eventsById[completion.activityId];
     if (!event || !source.employeesById[completion.employeeId])
       throw new Error("Unknown ledger reference");
+    if (historyIds.has(`session:${completion.id}`)) continue;
     history.push({
       employeeId: completion.employeeId,
       activityId: completion.activityId,
       status: "completed",
       assignedBy: "self",
       mandatory: event.mandatory,
+      date: completion.effectiveDate ?? null,
+      historyId: `session:${completion.id}`,
     });
   }
-  return { employees, history };
+  return { employees, history, snapshotDate: source.meta.asOfDate };
 }

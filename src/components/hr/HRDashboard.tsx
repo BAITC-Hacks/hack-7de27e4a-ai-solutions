@@ -3,6 +3,8 @@ import { useMemo, useState } from 'react';
 import { selectHRAnalytics } from '../../domain/analytics/selectors';
 import type { AnalyticsInput } from '../../domain/analytics/types';
 import styles from './dashboard.module.css';
+import { DropoutPanel } from './DropoutPanel';
+import { HRAgentPanel } from './HRAgentPanel';
 
 const statusLabels = { completed: 'Завершено', in_progress: 'В процессе', dropped: 'Прервано', no_show: 'Неявка', declined: 'Отклонено', overdue: 'Просрочено' };
 const assignmentLabels = { self: 'По своей инициативе', manager: 'Назначил руководитель', hr: 'Назначил HR' };
@@ -18,7 +20,7 @@ export function HRDashboard({ input }: { input: AnalyticsInput }) {
     if (!effectiveRole) return input;
     const employees = input.employees.filter(e => (e.target?.role ?? e.role) === effectiveRole);
     const ids = new Set(employees.map(e => e.employeeId));
-    return { employees, history: input.history.filter(row => ids.has(row.employeeId)) };
+    return { ...input, employees, history: input.history.filter(row => ids.has(row.employeeId)) };
   }, [input, effectiveRole]);
   const analytics = useMemo(() => {
     try { return { result: selectHRAnalytics(filtered), error: false }; }
@@ -42,6 +44,8 @@ export function HRDashboard({ input }: { input: AnalyticsInput }) {
       <div className={styles.stat}><span>Критичный дефицит</span><strong>{data.weightedCriticalGap}</strong><span className={styles.muted}>Сумма разрывов с весом ×2</span></div>
     </div>
     {data.employeesWithoutTarget > 0 && <p className={styles.muted}>{data.employeesWithoutTarget} профилей без карьерной цели исключены из знаменателя охвата.</p>}
+    <HRAgentPanel />
+    <DropoutPanel input={filtered} />
     <div className={styles.grid}><div>
       <section className={styles.panel}><div className={styles.panelHead}><div><h2>Где рост команды замедляется</h2><p className={styles.muted}>Разрывы по целевой роли и грейду. Критичные навыки имеют вес ×2.</p></div><span className={styles.badge}>Навыки × роли</span></div>
         <div className={styles.scroll}><table><caption className={styles.muted}>Агрегаты без рейтинга сотрудников</caption><thead><tr><th>Навык</th><th>Роль / грейд</th><th>Сотрудников</th><th>Вес разрыва</th></tr></thead><tbody>{data.gaps.map(g => <tr key={`${g.role}:${g.grade}:${g.skillId}`}><td>{g.skillId}</td><td>{g.role} / {g.grade}</td><td>{g.affectedEmployees}</td><td><span className={`${styles.heat} ${g.criticalEmployees ? styles.hot : ''}`}>{g.weightedGap}</span></td></tr>)}</tbody></table></div>

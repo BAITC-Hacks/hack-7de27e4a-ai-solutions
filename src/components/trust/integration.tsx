@@ -3,6 +3,7 @@ import { createContext, useContext, type ReactNode } from 'react';
 import type { AnalyticsInput, EmployeeAnalytics } from '../../domain/analytics/types';
 import type { EvaluationCase } from '../../lib/evaluation/harness';
 import type { ReviewRequest } from '../../lib/evaluation/ai-contracts';
+import type { AgentSnapshot } from '../../lib/evaluation/agent-tools';
 
 export interface TrustIntegration {
   /** UI access must come from the host session; this is not an authentication implementation. */
@@ -12,6 +13,8 @@ export interface TrustIntegration {
   /** Selected challenge only. No employee directory/leaderboard is exposed by C. */
   challenge?: { label: string; employee: EmployeeAnalytics };
   reviewRequest?: ReviewRequest;
+  /** Read-only reference to the same browser store revision. Never serialized to the API. */
+  agentSnapshot?: AgentSnapshot;
   coreEvaluationCases?: readonly EvaluationCase[];
   versions?: { engine: string; weights: string; adapter: string };
 }
