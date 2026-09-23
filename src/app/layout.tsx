@@ -1,11 +1,11 @@
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
-import { AppProviders } from "./AppProviders";
+import { AppNavigation } from "@/components/app-navigation";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Career Quest",
-  description: "Explainable AI career navigation",
+  title: "Career Quest · AI Career Navigator",
+  description: "Explainable career navigation powered by evidence, not guesswork",
 };
 
 export default function RootLayout({
@@ -14,7 +14,8 @@ export default function RootLayout({
   return (
     <html lang="ru">
       <body>
-        <AppProviders>{children}</AppProviders>
+        <AppNavigation />
+        {children}
       </body>
     </html>
   );

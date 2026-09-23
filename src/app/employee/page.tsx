@@ -1,16 +1,5 @@
-"use client";
-import { EmployeeWorkspace } from "../../components/employee/EmployeeWorkspace";
-import {
-  EmployeeStoreProvider,
-  useOptionalEmployeeStore,
-} from "../../state/EmployeeStoreProvider";
+import { redirect } from "next/navigation";
+
 export default function EmployeePage() {
-  const shared = useOptionalEmployeeStore();
-  return shared ? (
-    <EmployeeWorkspace />
-  ) : (
-    <EmployeeStoreProvider>
-      <EmployeeWorkspace />
-    </EmployeeStoreProvider>
-  );
+  redirect("/");
 }

@@ -2,35 +2,43 @@
 
 **Career Quest recommends not the weakest skill, but the next best career move.**
 
-AI-навигатор развития сотрудника: по профилю, истории участия и требованиям следующего грейда
-система подбирает 1–3 шага развития, объясняет каждый минимум по трём факторам и показывает,
-как сдвинется карьерная готовность — до того, как человек потратит на это время.
+Career Quest превращает профиль сотрудника, историю обучения и требования следующего грейда
+в проверяемый план развития. Система предлагает 1–3 внутренних активности, объясняет выбор
+конкретными фактами и показывает карьерный эффект ещё до прохождения курса.
 
-> HackAlem AI · трек Halyk Bank · кейс **Career Quest**
-> Команда: Алихан (Intelligence), Манахнбет (Experience), Даник (Trust)
+> HackAlem AI · Halyk Bank · Career Quest<br>
+> Алихан — Intelligence · Манахнбет — Experience · Даник — Trust
 
-Employee, HR и Trust подключены к одной сессии приложения. Главный адрес открывает кабинет сотрудника.
+## Что отличает продукт
 
-## Почему наше решение другое
-
-|                     |                                                                                                                                                                                 |
-| ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Decision Engine** | Многофакторный детерминированный выбор: разрыв по навыкам с приоритетом критичных, история участия, выполнимость, цель, разнообразие. Не один prompt и не «самый низкий навык». |
-| **Digital Twin**    | Карьерный эффект виден **до** выполнения активности: what-if по уровням и readiness, план на несколько шагов, подтверждение с пересчётом.                                       |
-| **Trust Center**    | У каждого решения есть Evidence Receipt. Баг-репорт на сам AI: нарушения eligibility, подтверждённость чисел, корректность пересчёта истории, latency, поведение без LLM.       |
+| Возможность | Что получает пользователь |
+|---|---|
+| **Decision Engine** | Многофакторный ranking: критичные skill gaps, история участия, выполнимость, карьерная цель и разнообразие — не просто «самый слабый навык». |
+| **Career Digital Twin** | What-if показывает изменение навыков и readiness до подтверждения; completion сразу перестраивает рекомендации и карьерный путь. |
+| **Evidence Receipt** | Все факторы, числа, источники и версия движка доступны в интерфейсе. |
+| **Career Quest Path** | Детерминированная последовательность из 2–3 шагов до целевого грейда. |
+| **Skill Buddy и private XP** | Подсказка, к кому обратиться за помощью, и личный прогресс без публичного рейтинга сотрудников. |
+| **Bounded AI critic** | Браузер передаёт только employee/candidate/completion IDs; сервер сам восстанавливает evidence, а LLM возвращает только allowlisted ID и citations. |
+| **HR Command Center** | Агрегированные skill gaps, coverage, участие, пробелы каталога и рабочая очередь no-step — без рейтинга результативности. |
+| **AI Trust Center** | Живые проверки eligibility, Evidence Receipt, deterministic rerun, history replay и отличие от weakest-skill baseline. |
 
 ## Быстрый старт
 
+Требуются Node 22 и pnpm 11.19.0:
+
 ```bash
-pnpm install --frozen-lockfile
-pnpm dev
+corepack pnpm install --frozen-lockfile
+corepack pnpm dev
 ```
 
-Открыть http://localhost:3000 и загрузить четыре файла из `data/source/`.
-В общей навигации доступны «Моя траектория», «HR-аналитика» и «AI Trust Center».
-Для аналитики переключить «Режим демо» на HR в верхней панели. Это демонстрация
-видимости экранов, а не аутентификация или защита реальных персональных данных.
-Переходы сохраняют импорт, выбранный профиль и завершения текущей вкладки.
+Открыть [http://localhost:3000](http://localhost:3000).
+
+| Route | Назначение |
+|---|---|
+| `/` | Личный режим: server-bound viewer и минимизированный payload без чужой истории |
+| `/demo` | Demo Lab: синтетические профили и импорт четырёх файлов judge dataset |
+| `/hr` | HR-агрегаты и operational queue без employee leaderboard |
+| `/trust` | Trust gates и состояние bounded LLM/fallback |
 
 Docker:
 
@@ -38,115 +46,110 @@ Docker:
 docker compose up --build
 ```
 
-Если опциональные LLM-переменные заданы в `.env.local`, передать их Compose явно:
+### Необязательный LLM
+
+Приложение полностью работает без ключа. Для локального запуска скопируйте `.env.example`
+в `.env.local`; для Docker Compose используйте `.env` либо передайте файл явно:
 
 ```bash
 docker compose --env-file .env.local up --build
 ```
 
-**LLM-ключ не обязателен.** Без него приложение работает полностью: тот же ranking и
-детерминированные объяснения. Ключ включает только bounded-критика поверх готового решения.
-Переменные — в `.env.example`.
+Заполните `LLM_API_KEY`; при необходимости задайте `LLM_BASE_URL`, `LLM_MODEL` и
+`LLM_TIMEOUT_MS`. `CAREER_QUEST_VIEWER_ID` выбирает сотрудника личного route. Ошибка,
+invalid response или timeout включает deterministic fallback и не меняет ranking.
 
-Требуется Node 22 и pnpm (`corepack enable`).
+## Демо за 90 секунд
 
-## Демо-сценарий
+1. Открыть `/demo` → **Демо и импорт** и показать четыре входных файла.
+2. Выбрать `E0028`: история после review уже подняла System Design с 2 до 3, поэтому
+   завершённый `EV_006` не предлагается повторно.
+3. Показать «Почему не самый слабый навык?» и Evidence Receipt.
+4. Нажать **What-if**, затем **Отметить выполненной**: readiness и top-рекомендации меняются,
+   а прогресс переживает reload через IndexedDB.
+5. Открыть `/hr`: показать gaps, coverage, no-step queue и участие по всем активностям.
+6. Открыть `/trust`: показать 0 eligibility violations, полноту receipt и deterministic rerun.
+7. Запустить bounded AI critic без ключа и показать штатный `no_key` fallback.
 
-После импорта выбрать E0028: System Design после replay равен 3, EV_006 повторно
-не предлагается. Примерить и подтвердить Leadership Foundations: readiness 74% → 78%.
-Открыть HR: число добровольных завершений увеличится с 1044 до 1045. Открыть Trust и
-запустить проверки; затем вернуться к сотруднику — профиль и журнал сохранятся.
+Полный сценарий: [`docs/DEMO.md`](docs/DEMO.md).
 
-Полный скрипт: [`docs/DEMO.md`](docs/DEMO.md).
+## Как работает решение
 
-## Архитектура
-
-Next.js + TypeScript, вся обработка данных — в браузере; в server route уходят только
-минимальные evidence-факты по top-кандидатам.
-
+```text
+employees.json + skills.json + events.json + activity_history.csv
+  -> Zod/PapaParse import and relation validation
+  -> history replay after last_review_date
+  -> career_goal or next-grade target
+  -> hard eligibility filters
+  -> multi-factor ranking + diversity
+  -> Evidence Receipt
+       ├─ Employee Digital Twin + path + IndexedDB ledger
+       ├─ HR aggregate analytics
+       └─ bounded LLM critic + verifier + deterministic fallback
 ```
-Import (Zod) -> NormalizedDataset -> history replay -> target gaps
-   -> hard filters -> multi-factor ranking -> Evidence Receipt
-        ├─> Employee Digital Twin (what-if, planner, ledger)
-        ├─> HR Command Center (агрегаты, no-step alerts)
-        └─> AI Trust Center (baseline, evals, fallback)
+
+Hard filters выполняются до score: mandatory, role/grade mismatch, prerequisites, уже
+завершённая или активная activity, отсутствие будущей scheduled-сессии и нулевой effective
+gain. Уровень навыка никогда не уменьшается и ограничен `max_level` и диапазоном 0–5.
+
+| Фактор | Вес |
+|---|---:|
+| Target gap impact, critical ×2 | 45% |
+| Engagement fit | 20% |
+| Feasibility | 15% |
+| Goal alignment | 10% |
+| Path/diversity | 10% |
+
+## Проверка перед релизом
+
+```bash
+corepack pnpm typecheck
+corepack pnpm test
+NEXT_TELEMETRY_DISABLED=1 corepack pnpm build
+docker compose up --build -d
+curl --retry 30 --retry-connrefused --retry-delay 1 --fail http://localhost:3000/
+docker compose down
 ```
 
-Подробно: [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) · контракты:
-[`docs/CONTRACTS.md`](docs/CONTRACTS.md) · данные: [`docs/DATASET.md`](docs/DATASET.md).
+Фактические результаты последнего прогона фиксируются в
+[`docs/EVALUATION.md`](docs/EVALUATION.md) и обновляются только после успешной проверки.
 
-## Как считается рекомендация
+Последний release-прогон на этой ветке:
 
-Перед любым расчётом движок **доигрывает историю**: уровни в профиле актуальны на
-`last_review_date`, а всё завершённое позже ещё не учтено. В стартовом наборе это 318 записей
-у 114 из 200 сотрудников — то есть решение без replay ошибается на каждом втором профиле.
+- TypeScript typecheck — **PASS**;
+- Vitest — **134/134 PASS** в 17 test-файлах;
+- Next.js production build — **PASS**;
+- Docker image build — **PASS**; `/`, `/demo`, `/hr`, `/trust` вернули HTTP 200;
+- интерактивный browser smoke на Docker-сборке — What-if, четыре judge file inputs, HR,
+  Trust и `no_key` fallback работают без console errors.
 
-Hard-фильтры (до скоринга): mandatory, несоответствие роли/грейду, невыполненные
-prerequisites, уже пройденное (кроме recurring `EV_036`), нулевой effective gain, отсутствие
-будущей сессии.
+## Privacy и продуктовые ограничения
 
-Ранжирование:
+- Нет публичного рейтинга сотрудников, автоматических премий, зарплатных решений или давления
+  за обязательные активности.
+- Employee mode получает один viewer-профиль и минимальный Skill Buddy-каталог; чужая история,
+  цели, менеджеры и review snapshots не сериализуются. Все синтетические профили доступны только
+  в явном `/demo`.
+- В AI route уходят только `employeeId`, язык, candidate IDs и bounded completion IDs. Сервер
+  заново проверяет replay и восстанавливает evidence; LLM не создаёт числовые claims.
+- Completion ledger хранится локально в IndexedDB и изолирован fingerprint конкретного dataset.
+- Browser-import dataset использует deterministic explanation: внешний critic не смешивает его
+  с server-side bundled evidence.
 
-| Фактор                                      | Вес |
-| ------------------------------------------- | --- |
-| Target gap impact (critical skills ×2)      | 45% |
-| Engagement fit (история, self vs assigned)  | 20% |
-| Feasibility (prerequisites, формат, сессия) | 15% |
-| Goal alignment (в т.ч. cross-role цели)     | 10% |
-| Path / diversity                            | 10% |
-
-`effective_gain = max(0, min(current + gain, max_level, 5) - current)` — правило роста задано
-самим датасетом, не придумано нами.
-
-## Результаты проверки
-
-На объединённом A+B+C прошли **94 теста в 12 файлах**, TypeScript и production-сборка
-в локальной Windows-среде. Сборка включает `/employee`, `/hr`, `/trust`, `/api/ai/review`.
-Три браузерных цикла confirm → HR → Trust → Employee сохранили прогресс;
-добровольные завершения изменились 1044 → 1045 → 1046 → 1047.
-Trust на загруженном наборе выполнил 33 проверки без ошибок. Grounding относится
-к 5 проверочным утверждениям, а не к произвольным ответам модели.
-
-GitHub Actions заблокирован из-за billing аккаунта, до запуска команд проекта.
-По решению команды проверяем эту интеграцию локально. Детали команд и ограничений:
-[`docs/INTEGRATION.md`](docs/INTEGRATION.md).
-
-Метрики и adversarial-кейсы: [`docs/EVALUATION.md`](docs/EVALUATION.md).
-
-## Приватность и отказоустойчивость
-
-- Данные не покидают браузер: без БД, без внешнего хранилища.
-- В LLM уходят только evidence-факты по top-кандидатам — **никогда** raw-профиль и история.
-- Ответ модели проходит Zod-схему и fact verifier: неизвестный ID, изменённое число или
-  неподтверждённое утверждение блокируются.
-- Текст из датасета трактуется как данные, а не как инструкции (защита от prompt injection).
-- Без ключа или при ошибке модели — полноценный детерминированный режим.
-- Режимы просмотра сотрудник / HR для демонстрации; публичных рейтингов сотрудников нет.
-
-## Ограничения
-
-- Набор и прогресс хранятся в памяти вкладки. Полная перезагрузка страницы сбрасывает сессию.
-- Режим демо не заменяет серверную авторизацию; приложение предназначено для синтетического набора.
-- Beam search ограничен шириной 10 и глубиной 4; календарная совместимость активностей не рассчитывается.
-- Живой платный LLM-провайдер не вызывался при проверке; протестированы проверенные ответы, отказ,
-  таймаут и режим без ключа. AI не меняет порядок рекомендаций.
-- Docker-конфигурация есть; текущий локальный Docker daemon недоступен, контейнер здесь не запускался.
+Это hackathon role-scoped demo, **не production authentication**. Для реальных данных нужны
+корпоративные SSO/RBAC, серверное хранилище и audit log. IndexedDB не синхронизируется между
+устройствами.
 
 ## Документация
 
-| Файл                                           | О чём                                         |
-| ---------------------------------------------- | --------------------------------------------- |
-| [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) | Техническая модель, формула, release gates    |
-| [`docs/DATASET.md`](docs/DATASET.md)           | Проверенные факты о данных и доменные правила |
-| [`docs/CONTRACTS.md`](docs/CONTRACTS.md)       | Общие типы и публичный API ядра               |
-| [`docs/PLAYBOOK.md`](docs/PLAYBOOK.md)         | План на 5 часов, feature gates, checklist     |
-| [`docs/WORKSTREAMS.md`](docs/WORKSTREAMS.md)   | Готовые Codex-задания по потокам              |
-| [`docs/EVALUATION.md`](docs/EVALUATION.md)     | Метрики и adversarial-кейсы                   |
-| [`docs/DEMO.md`](docs/DEMO.md)                 | Демо-скрипт на 90 секунд                      |
-| [`AGENTS.md`](AGENTS.md)                       | Правила для AI-агентов                        |
-| [`CONTRIBUTING.md`](CONTRIBUTING.md)           | Ветки, коммиты, merge, handshake              |
+- [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) — техническая модель и release gates
+- [`docs/DATASET.md`](docs/DATASET.md) — проверенные факты о данных
+- [`docs/CONTRACTS.md`](docs/CONTRACTS.md) — публичные типы и API ядра
+- [`docs/EVALUATION.md`](docs/EVALUATION.md) — метрики и adversarial-проверки
+- [`docs/DEMO.md`](docs/DEMO.md) — актуальный demo script
+- [`docs/ADVANCED_FEATURES.md`](docs/ADVANCED_FEATURES.md) — следующие продуктовые расширения
+- [`docs/INTEGRATION.md`](docs/INTEGRATION.md) — интеграционный отчёт
+- [`docs/WORKSTREAMS.md`](docs/WORKSTREAMS.md) — разделение работы команды
 
----
-
-Данные синтетические, предоставлены организаторами. Реальные персональные данные не
+Данные синтетические и предоставлены организаторами. Реальные персональные данные не
 используются.

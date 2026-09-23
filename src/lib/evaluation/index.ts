@@ -8,3 +8,5 @@ export * from './client';
 export * from './core-cases';
 export * from './core-evidence';
 export * from './dataset-audit';
+export * from "./critic";
+export * from "./trust-metrics";

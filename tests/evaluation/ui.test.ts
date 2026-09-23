@@ -1,23 +1,59 @@
-import { describe, expect, it } from 'vitest';
-import { createElement } from 'react';
-import { renderToStaticMarkup } from 'react-dom/server';
-import HRPage from '../../src/app/hr/page';
-import TrustPage from '../../src/app/trust/page';
-import { TrustIntegrationProvider, type TrustIntegration } from '../../src/components/trust/integration';
-import { dataset, employee } from './fixtures';
-const integration = (): TrustIntegration => ({ access: 'hr', state: 'ready', analytics: dataset(), challenge: { label: 'Synthetic E0028 challenge', employee: employee() } });
-const render = (value: TrustIntegration, page = HRPage) => renderToStaticMarkup(createElement(TrustIntegrationProvider, { value, children: createElement(page) }));
-describe('HR and Trust surfaces', () => {
-  it('show missing integration, loading and invalid import states', () => {
-    expect(renderToStaticMarkup(createElement(HRPage))).toContain('Данные ещё не подключены');
-    expect(render({ ...integration(), state: 'loading' })).toContain('Готовим данные');
-    expect(render({ ...integration(), state: 'invalid' })).toContain('Файлы не прошли проверку');
+import { createElement } from "react";
+import { renderToStaticMarkup } from "react-dom/server";
+import { beforeEach, describe, expect, it } from "vitest";
+
+import { HrCommandCenter } from "@/components/hr/hr-command-center";
+import { TrustCenter } from "@/components/trust/trust-center";
+import { useCareerQuestStore } from "@/state/career-quest-store";
+
+import { loadChallengeDataset } from "../recommendation/test-utils";
+
+const dataset = loadChallengeDataset();
+
+beforeEach(() => {
+  useCareerQuestStore.setState({
+    dataset: null,
+    datasetFingerprint: null,
+    source: null,
+    ledgerHydrationStatus: "idle",
+    appliedLedgerEntries: [],
+    ignoredLedgerEntries: [],
   });
-  it('renders aggregates for HR and hides the dashboard from employee mode', () => {
-    const hr = render(integration()); expect(hr).toContain('50%'); expect(hr).toContain('SK_SYSTEM_DESIGN'); expect(hr).not.toContain('E0028');
-    const denied = render({ ...integration(), access: 'employee' }); expect(denied).toContain('Раздел для HR'); expect(denied).not.toContain('SK_SYSTEM_DESIGN');
+});
+
+describe("HR and Trust surfaces", () => {
+  it("renders organization aggregates without a public employee leaderboard", () => {
+    const html = renderToStaticMarkup(
+      createElement(HrCommandCenter, { initialDataset: dataset }),
+    );
+
+    expect(html).toContain("Где развитию нужна помощь");
+    expect(html).toContain("Покрытие следующим шагом");
+    expect(html).toContain("Явка и завершение программ");
+    expect(html).toContain("Это рабочая очередь, не рейтинг");
+    expect(html).not.toContain("Рейтинг сотрудников");
   });
-  it('does not present unevaluated metrics as success', () => {
-    const html = render(integration(), TrustPage); expect(html).toContain('Не измерено'); expect(html).toContain('синтетических'); expect(html).toContain('EV_MENTORING');
+
+  it("renders deterministic release gates and the no-key operating mode", () => {
+    const html = renderToStaticMarkup(
+      createElement(TrustCenter, { initialDataset: dataset, modelConfigured: false }),
+    );
+
+    expect(html).toContain("Не «поверьте AI»");
+    expect(html).toContain("Deterministic fallback active");
+    expect(html).toContain("Eligibility violations");
+    expect(html).toContain("Deterministic rerun");
+    expect(html).toContain("Bounded LLM protocol");
+  });
+
+  it("does not label release-gate failures as passing", () => {
+    const html = renderToStaticMarkup(
+      createElement(TrustCenter, { initialDataset: dataset, modelConfigured: true }),
+    );
+    const failedGates = html.match(/data-passed="false"/g) ?? [];
+    const checkLabels = html.match(/>CHECK</g) ?? [];
+
+    expect(checkLabels).toHaveLength(failedGates.length);
+    expect(html).toContain("LLM critic configured");
   });
 });

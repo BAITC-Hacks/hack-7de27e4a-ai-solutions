@@ -176,22 +176,24 @@ Planner работает поверх тех же детерминированн
 
 ## 6. Bounded LLM: critic, verifier, fallback (поток C)
 
-LLM — **ограниченный критик, а не источник истины**. Движок сначала строит top-5 и Evidence
-Bundle; модель может выбрать только `candidate_id` из allowlist и обязана сослаться на
-`evidence_id`.
+LLM — **ограниченный критик, а не источник истины**. Браузер передаёт route только
+`employeeId`, язык, до трёх `candidate_id` и ограниченный список локальных completion ID.
+Сервер валидно переигрывает completion-последовательность, повторно запускает deterministic engine,
+восстанавливает Evidence Bundle из доверенного dataset и только затем вызывает модель.
+Модель может выбрать ID из allowlist и обязана сослаться на `evidence_id`.
 
 ```ts
 type AIReview = {
   selectedCandidateIds: string[];
-  reasons: { candidateId: string; evidenceIds: string[]; explanation: string }[];
+  reasons: { candidateId: string; evidenceIds: string[] }[];
 };
 ```
 
 Verifier **блокирует** ответ, если:
 
-- появился неизвестный `activity_id` или `skill_id`;
-- модель изменила числовой уровень, gain или требование грейда;
-- объяснение не опирается минимум на три подтверждённых фактора;
+- появился неизвестный `activity_id` или `evidence_id`;
+- ответ содержит свободный model-authored prose;
+- выбор не опирается минимум на три подтверждённых evidence-факта;
 - выход не проходит Zod-схему;
 - превышен timeout;
 - текст датасета пытается дать модели инструкции (prompt injection).
@@ -200,8 +202,9 @@ Verifier **блокирует** ответ, если:
 корректное шаблонное объяснение на `preferred_language` (ru/kk/en). Живое демо не зависит от
 внешнего сервиса — это отдельный release gate.
 
-Приватность: в server route уходят только минимальные evidence-факты по top-кандидатам.
-Raw-профиль и полная история — никогда. Текст из датасета всегда трактуется как **untrusted data**.
+Приватность: из браузера в server route уходят только ID. Raw-профиль, клиентский evidence-текст
+и полная история — никогда. Пользовательское объяснение строится сервером из cited evidence;
+модель не контролирует prose или числа. Route имеет body cap, rate/concurrency limit и timeout.
 
 ## 7. Поверхности продукта
 
@@ -214,7 +217,7 @@ recommendation coverage, сотрудники без следующего шаг
 активностям, навыки без достаточного каталога, impact preview программ.
 
 **AI Trust Center (C)** — baseline vs multi-factor на adversarial-профилях, eligibility
-violations (цель 0), factual grounding (цель 100% по числовым утверждениям), p50/p95 latency,
+violations (цель 0), Evidence Receipt completeness (цель 100%), p50/p95 latency,
 статус fallback, версии engine/weights/adapter.
 
 ## 8. Структура репозитория и владение

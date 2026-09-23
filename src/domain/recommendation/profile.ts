@@ -43,7 +43,10 @@ export function buildEffectiveEmployeeProfile(
   const replayEvidence: SkillReplayEvidence[] = [];
   const records = (dataset.historyByEmployeeId[employeeId] ?? [])
     .filter((record) => record.status === "completed" && record.date > employee.lastReviewDate)
-    .sort((a, b) => a.date.localeCompare(b.date) || a.id.localeCompare(b.id));
+    // Array#sort is stable: for same-day completions preserve the ledger/import order.
+    // Sorting by record ID here used to reorder local completions by activity ID, which
+    // changes the result when two activities have different max_level caps.
+    .sort((a, b) => a.date.localeCompare(b.date));
 
   records.forEach((record) => {
     const event = dataset.eventsById[record.eventId];

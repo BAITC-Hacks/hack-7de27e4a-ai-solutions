@@ -1,9 +1,14 @@
-'use client';
-import { HRDashboard } from '../../components/hr/HRDashboard';
-import { useTrustIntegration } from '../../components/trust/integration';
-import { IntegrationGate, Surface } from '../../components/trust/Surface';
+import type { Metadata } from "next";
 
-export default function HRPage() {
-  const integration = useTrustIntegration();
-  return <Surface active="hr"><IntegrationGate>{integration?.analytics ? <HRDashboard input={integration.analytics} /> : <p>Загрузите набор данных на экране сотрудника.</p>}</IntegrationGate></Surface>;
+import { HrCommandCenter } from "@/components/hr/hr-command-center";
+import { loadBundledDataset } from "@/domain/data/server";
+
+export const metadata: Metadata = {
+  title: "HR Command Center · Career Quest",
+  description: "Aggregate skill gaps, development coverage and activity participation without employee rankings.",
+};
+
+export default async function HrPage() {
+  const dataset = await loadBundledDataset();
+  return <HrCommandCenter initialDataset={dataset} />;
 }

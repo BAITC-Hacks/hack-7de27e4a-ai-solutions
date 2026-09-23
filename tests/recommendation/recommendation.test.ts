@@ -8,6 +8,7 @@ import {
   resolveTarget,
   scoreCandidate,
 } from "@/domain/recommendation";
+import { simulateActivity } from "@/domain/simulation";
 import type { DevelopmentEvent, NormalizedDataset } from "@/lib/contracts";
 
 import { cloneDataset, loadChallengeDataset } from "./test-utils";
@@ -147,6 +148,41 @@ describe("Career Quest Intelligence Engine", () => {
       reasons: ["NO_TARGET_GAP_IMPACT"],
       effectiveGains: {},
     });
+  });
+
+  it("does not lower a skill above event max_level when projecting readiness", () => {
+    const employeeId = "E0070";
+    const eventId = "EV_008";
+    const profile = buildEffectiveEmployeeProfile(dataset, employeeId);
+    const event = dataset.eventsById[eventId];
+    const cappedEffect = event.developsSkills.find(
+      (effect) => effect.skillId === "SK_COMMUNICATION",
+    );
+
+    expect(profile.effectiveSkills.SK_COMMUNICATION).toBe(4);
+    expect(cappedEffect?.maxLevel).toBe(3);
+
+    const result = recommendForEmployee(dataset, employeeId);
+    const recommendation = result.recommendations.find(
+      (item) => item.activityId === eventId,
+    );
+    const simulation = simulateActivity(dataset, employeeId, eventId);
+
+    expect(recommendation).toBeDefined();
+    expect(
+      simulation.skillChanges.find((change) => change.skillId === "SK_COMMUNICATION"),
+    ).toEqual({
+      skillId: "SK_COMMUNICATION",
+      before: 4,
+      after: 4,
+      gain: 0,
+    });
+    expect(recommendation!.projectedReadiness).toBe(
+      Number(simulation.readinessAfter.toFixed(4)),
+    );
+    expect(recommendation!.projectedReadiness).toBeGreaterThanOrEqual(
+      result.gapAnalysis.readiness,
+    );
   });
 
   it("excludes a scheduled event without a future session", () => {
