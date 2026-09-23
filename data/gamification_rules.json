@@ -1,0 +1,22 @@
+{
+  "meta": {
+    "version": "rules-v1",
+    "note": "Версия показывается рядом с балансом: сотрудник всегда знает, по каким правилам ему начислено."
+  },
+  "activity": {
+    "base": 10,
+    "criticalMultiplier": 2,
+    "offTargetFactor": 0.5,
+    "mandatoryPoints": 0
+  },
+  "mentorship": {
+    "threadClosed": 25,
+    "thanksReceived": 15,
+    "thanksPerPeriodCap": 6
+  },
+  "challenge": {
+    "completionBonus": 40,
+    "windowDays": 90,
+    "voluntaryTarget": 3
+  }
+}
