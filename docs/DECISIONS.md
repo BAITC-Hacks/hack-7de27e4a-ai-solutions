@@ -11,7 +11,10 @@
 | 3 | pre-hack | Snapshot date `2026-10-01` как «сегодня» | команда | `new Date()` в домене запрещён |
 | 4 | pre-hack | Имена веток по владельцам: `feat/alihan-intelligence`, `feat/manahnbet-digital-twin`, `feat/danik-hr-trust` | Алихан | вариант из playbook (`feat/intelligence-engine` и т.п.) отменён |
 | 5 | pre-hack | Демо-история E0028 строится на CLOUD/CONTAINERS/DATA_VIZ vs критичный SYSTEM_DESIGN | Алихан | у E0028 нет разрыва по Public Speaking — см. `docs/DATASET.md` §6 |
-| 6 | | | | |
+| 6 | 2026-09-23 | PR #3 `codex/career-quest-experience` закрыт как дубль потока B | Алихан | вторая реализация Digital Twin; влитый PR #2 остаётся единственным. Ветка не удалена |
+| 7 | 2026-09-23 | Из PR #3 забрать только `src/domain/data/server.ts` (18 строк) отдельным PR | Алихан | предзагрузка датасета с сервера ДОПОЛНЯЕТ загрузку через UI, не заменяет её — жюри грузит свои профили |
+| 8 | 2026-09-23 | CI переводим на ручной запуск | Алихан | аккаунт организации заблокирован по биллингу, Actions не стартуют; воспроизводимость доказываем выводом `pnpm test`/`pnpm build` в README |
+| 9 | | | | |
 
 ## Изменения общего контракта
 
