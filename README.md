@@ -20,6 +20,8 @@ Employee, HR и Trust подключены к одной сессии прило
 | **Digital Twin**            | Карьерный эффект виден **до** выполнения активности: what-if по уровням и readiness, план на несколько шагов, подтверждение с пересчётом.                                       |
 | **Trust Center**            | У каждого решения есть Evidence Receipt. Баг-репорт на сам AI: нарушения eligibility, подтверждённость чисел, корректность пересчёта истории, latency, поведение без LLM.       |
 | **External Learning Layer** | Отдельный офлайновый каталог проверенных внешних курсов для разрывов без внутренней активности — без выдуманного gain и без влияния на top-3/readiness.                        |
+| **AI-слой**                 | Модель не источник истины, а ограниченный критик поверх готового решения, плюс агент для HR, который сам собирает ответ через инструменты над данными. Аргументы можно только процитировать из evidence — выдумать нельзя. |
+| **Экономика развития**      | Баллы за добровольное развитие и помощь коллегам оплачивают внешний курс. Баланс не хранится, а выводится из данных, поэтому его всегда можно объяснить. Рейтингов сотрудников нет намеренно. |
 
 ## Быстрый старт
 
@@ -139,34 +141,32 @@ prerequisites, уже пройденное (кроме recurring `EV_036`), ну
 
 ## Результаты проверки
 
-External Learning Layer поверх `main cf1dc89` прошёл **190 тестов в 23 файлах**,
-отдельный TypeScript typecheck, production build и Docker image build (2026-09-23).
-Browser smoke подтвердил активные `EmployeeWorkspace` и `HRDashboard`, RU/KK/EN,
-скрытие общеорганизационного external-агрегата при фильтре роли и отсутствие console errors.
+Прогон на текущем `main` (2026-09-23):
 
-Предыдущая версия согласованного интерфейса прошла **117 тестов в 14 файлах**,
-TypeScript и production-сборку. Для PR #6 отдельно зафиксированы **152 теста в 19 файлах**,
-TypeScript, сборка и Docker smoke. Это исторические результаты двух версий,
-а не результаты проверки их объединения.
+| Команда | Результат |
+| --- | --- |
+| `pnpm test` | **283 теста в 31 файле, все зелёные** |
+| `pnpm typecheck` | без ошибок |
+| `pnpm build` | production-сборка успешна, 10 маршрутов |
 
-Исторический browser QA согласованного UI: три цикла confirm → HR → Trust → Employee
-сохранили прогресс; добровольные завершения изменились 1044 → 1045 → 1046 → 1047.
-Trust выполнил 33 проверки без ошибок. Grounding относится к 5 проверочным утверждениям,
-а не к произвольным ответам модели. Текущий статус — в [`docs/INTEGRATION.md`](docs/INTEGRATION.md).
+Проверено на Node 22 и pnpm 11 из чистой установки `pnpm install --frozen-lockfile`.
 
-Стандартные команды проверки из корня проекта:
+Браузерная проверка на production-сборке: демо-набор загружается одной кнопкой,
+профили жюри импортируются по содержимому файла, подтверждение активности
+пересчитывает траекторию, HR и Trust читают то же состояние, интерфейс работает
+на трёх языках, и весь сценарий проходит без ключа LLM.
 
-```bash
-pnpm test
-pnpm typecheck
-pnpm build
-```
+> **CI.** GitHub Actions в этом репозитории не запускается: аккаунт организации
+> заблокирован по биллингу, и джоба падает до старта раннера (`steps: []`, 2 секунды).
+> Это не состояние кода. Workflow переведён на ручной запуск, чтобы не создавать
+> ложных красных отметок; воспроизводимость подтверждается командами выше.
 
-GitHub Actions заблокирован из-за billing аккаунта, до запуска команд проекта.
-По решению команды проверяем эту интеграцию локально. Детали команд и ограничений:
-[`docs/INTEGRATION.md`](docs/INTEGRATION.md).
+> **Windows.** На части конфигураций Windows `vitest` и `next build` падают с
+> `spawn EPERM` на этапе загрузки конфига — это ограничение окружения, а не проекта.
+> Проверяйте на macOS/Linux или в Docker.
 
 Метрики и adversarial-кейсы: [`docs/EVALUATION.md`](docs/EVALUATION.md).
+История интеграционных прогонов: [`docs/INTEGRATION.md`](docs/INTEGRATION.md).
 
 ## Приватность и отказоустойчивость
 
@@ -206,78 +206,12 @@ GitHub Actions заблокирован из-за billing аккаунта, до
 | [`docs/DEMO.md`](docs/DEMO.md)                 | Демо-скрипт на 90 секунд                      |
 | [`AGENTS.md`](AGENTS.md)                       | Правила для AI-агентов                        |
 | [`CONTRIBUTING.md`](CONTRIBUTING.md)           | Ветки, коммиты, merge, handshake              |
+| [`docs/INTEGRATION.md`](docs/INTEGRATION.md)   | История интеграционных прогонов               |
+| [`docs/DECISIONS.md`](docs/DECISIONS.md)       | Журнал принятых решений                       |
+| [`docs/ADVANCED_FEATURES.md`](docs/ADVANCED_FEATURES.md) | Задания на продвинутые фичи         |
+| [`docs/tz/`](docs/tz)                          | Персональные ТЗ и спецификации фич            |
 
 ---
 
 Данные синтетические, предоставлены организаторами. Реальные персональные данные не
 используются.
-
-## PR #7 — integration verification (2026-09-23)
-
-Merged main `f287b40` into the Danik branch, preserving the localized main UI, adding the HR agent and participation panels, and retaining both analytics export sets. The new panels use RU/KK/EN. Shared contracts, recommendation, simulation, and Employee files match main.
-
-Standard commands on Windows (Node 24.21.0, pnpm 11.19.0): `pnpm install` exit 0; `pnpm typecheck` exit 0; `pnpm test` exit 1; `pnpm build` exit 1. The current environment denies piped child processes (`spawn EPERM`), also reproduced with official Node 22.23.2. No alternate test configuration or build configuration was used for these checks. **The standard test/build gates remain unverified; these failures are not successful reproducibility evidence.**
-
-CI now has a manual `workflow_dispatch` trigger, implementing the billing-related team decision already recorded in `docs/DECISIONS.md` (decision 8). GitHub reports previous jobs failing before runner startup (`runner_id=0`, `steps=[]`); logs are unavailable. Billing is documented by the team, but the current billing diagnostic could not independently be retrieved through the connector. Manual-only CI does not constitute a passing check.
-
-<details><summary>Actual pnpm test output</summary>
-
-```text
-$ vitest run
-failed to load config from C:\Users\Daniyar\Documents\Codex\2026-09-23\github-plugin-github-openai-curated-remote\work\pr7-integration\vitest.config.ts
-
-⎯⎯⎯⎯⎯⎯⎯ Startup Error ⎯⎯⎯⎯⎯⎯⎯⎯
-Error: Build failed with 1 error:
-
-[plugin externalize-deps]
-Error: spawn EPERM
-    at ChildProcess.spawn (node:internal/child_process:458:11)
-    at spawn (node:child_process:813:9)
-    at Object.execFile (node:child_process:349:17)
-    at exec (node:child_process:236:25)
-    at optimizeSafeRealPathSync (file:///C:/Users/Daniyar/Documents/Codex/2026-09-23/github-plugin-github-openai-curated-remote/work/pr7-integration/node_modules/.pnpm/vite@8.3.0_@types+node@26.6.2/node_modules/vite/dist/node/chunks/node.js:2438:2)
-    at windowsSafeRealPathSync (file:///C:/Users/Daniyar/Documents/Codex/2026-09-23/github-plugin-github-openai-curated-remote/work/pr7-integration/node_modules/.pnpm/vite@8.3.0_@types+node@26.6.2/node_modules/vite/dist/node/chunks/node.js:2424:3)
-    at getRealPath (file:///C:/Users/Daniyar/Documents/Codex/2026-09-23/github-plugin-github-openai-curated-remote/work/pr7-integration/node_modules/.pnpm/vite@8.3.0_@types+node@26.6.2/node_modules/vite/dist/node/chunks/node.js:28972:36)
-    at tryResolveRealFileOrType (file:///C:/Users/Daniyar/Documents/Codex/2026-09-23/github-plugin-github-openai-curated-remote/work/pr7-integration/node_modules/.pnpm/vite@8.3.0_@types+node@26.6.2/node_modules/vite/dist/node/chunks/node.js:28966:9)
-    at tryCleanFsResolve (file:///C:/Users/Daniyar/Documents/Codex/2026-09-23/github-plugin-github-openai-curated-remote/work/pr7-integration/node_modules/.pnpm/vite@8.3.0_@types+node@26.6.2/node_modules/vite/dist/node/chunks/node.js:28715:21)
-    at tryFsResolve (file:///C:/Users/Daniyar/Documents/Codex/2026-09-23/github-plugin-github-openai-curated-remote/work/pr7-integration/node_modules/.pnpm/vite@8.3.0_@types+node@26.6.2/node_modules/vite/dist/node/chunks/node.js:28708:14)
-    at aggregateBindingErrorsIntoJsError (file:///C:/Users/Daniyar/Documents/Codex/2026-09-23/github-plugin-github-openai-curated-remote/work/pr7-integration/node_modules/.pnpm/rolldown@1.2.9/node_modules/rolldown/dist/shared/error-CGhV1ebk.mjs:48:18)
-    at unwrapBindingResult (file:///C:/Users/Daniyar/Documents/Codex/2026-09-23/github-plugin-github-openai-curated-remote/work/pr7-integration/node_modules/.pnpm/rolldown@1.2.9/node_modules/rolldown/dist/shared/error-CGhV1ebk.mjs:18:128)
-    at #build (file:///C:/Users/Daniyar/Documents/Codex/2026-09-23/github-plugin-github-openai-curated-remote/work/pr7-integration/node_modules/.pnpm/rolldown@1.2.9/node_modules/rolldown/dist/shared/rolldown-Ld3ZGGCt.mjs:133:34)
-    at async bundleConfigFile (file:///C:/Users/Daniyar/Documents/Codex/2026-09-23/github-plugin-github-openai-curated-remote/work/pr7-integration/node_modules/.pnpm/vite@8.3.0_@types+node@26.6.2/node_modules/vite/dist/node/chunks/node.js:37448:12)
-    at async bundleAndLoadConfigFile (file:///C:/Users/Daniyar/Documents/Codex/2026-09-23/github-plugin-github-openai-curated-remote/work/pr7-integration/node_modules/.pnpm/vite@8.3.0_@types+node@26.6.2/node_modules/vite/dist/node/chunks/node.js:37344:18)
-    at async loadConfigFromFile (file:///C:/Users/Daniyar/Documents/Codex/2026-09-23/github-plugin-github-openai-curated-remote/work/pr7-integration/node_modules/.pnpm/vite@8.3.0_@types+node@26.6.2/node_modules/vite/dist/node/chunks/node.js:37305:42)
-    at async resolveConfig (file:///C:/Users/Daniyar/Documents/Codex/2026-09-23/github-plugin-github-openai-curated-remote/work/pr7-integration/node_modules/.pnpm/vite@8.3.0_@types+node@26.6.2/node_modules/vite/dist/node/chunks/node.js:36906:22)
-    at async resolveConfig$1 (file:///C:/Users/Daniyar/Documents/Codex/2026-09-23/github-plugin-github-openai-curated-remote/work/pr7-integration/node_modules/.pnpm/vitest@5.0.1_@types+node@26_7c4363941a84df12a3c6620a81dfa721/node_modules/vitest/dist/chunks/index.DzobfTyw.js:14777:25)
-    at async createVitest (file:///C:/Users/Daniyar/Documents/Codex/2026-09-23/github-plugin-github-openai-curated-remote/work/pr7-integration/node_modules/.pnpm/vitest@5.0.1_@types+node@26_7c4363941a84df12a3c6620a81dfa721/node_modules/vitest/dist/chunks/cli-api.DcLieX4F.js:26:17)
-    at async prepareVitest (file:///C:/Users/Daniyar/Documents/Codex/2026-09-23/github-plugin-github-openai-curated-remote/work/pr7-integration/node_modules/.pnpm/vitest@5.0.1_@types+node@26_7c4363941a84df12a3c6620a81dfa721/node_modules/vitest/dist/chunks/cli-api.DcLieX4F.js:421:14) {
-  errors: [Getter/Setter]
-}
-
-
-
-[ELIFECYCLE] Test failed. See above for more details.
-EXIT_CODE=1
-```
-
-</details>
-
-<details><summary>Actual pnpm build output</summary>
-
-```text
-$ next build
-▲ Next.js 16.3.5 (Turbopack)
-⚠ Warning: Next.js ignored package-lock.json in C:\Users\Daniyar\Documents\Codex\2026-09-23\github-plugin-github-openai-curated-remote\work because it is outside the current Git repository (C:\Users\Daniyar\Documents\Codex\2026-09-23\github-plugin-github-openai-curated-remote\work\pr7-integration).
- To use this directory, set `turbopack.root` in your Next.js config.
-
-✓ Running next.config.ts took 52ms
-
-  Creating an optimized production build ...
-✓ Compiled successfully in 6.1s
-  Running TypeScript ...
-spawn EPERM
-[ELIFECYCLE] Command failed with exit code 1.
-EXIT_CODE=1
-```
-
-</details>
