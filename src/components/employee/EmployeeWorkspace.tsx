@@ -1,5 +1,8 @@
 "use client";
 import { useEffect, useState } from "react";
+import Link from "next/link";
+import { useIdentity } from "@/components/identity/IdentityProvider";
+import { MentorSuggestions } from "@/components/mentorship/MentorSuggestions";
 import { useI18n } from "@/lib/i18n/I18nProvider";
 import {
   catalogName,
@@ -65,6 +68,7 @@ export function EmployeeWorkspace() {
     stretch: t("Больше роста", "Көбірек даму", "Stretch"),
   };
 
+  const identity = useIdentity();
   const state = useEmployeeStore((s) => s);
   const { dataset, normalizedDataset, selectedEmployeeId, simulation } = state;
   const employee = dataset?.employees.find((e) => e.id === selectedEmployeeId);
@@ -301,6 +305,9 @@ export function EmployeeWorkspace() {
                                 " Your profile ",
                               )}
                             </label>
+                            {identity.workspaceSource === "demo" ? <button type="button" id="employee-select" className={styles.profilePicker} onClick={() => identity.openPicker()} disabled={busy}>
+                              {employee.name}<svg viewBox="0 0 16 16" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="1.6" aria-hidden="true"><path d="m4 6 4 4 4-4"/></svg>
+                            </button> : <>
                             <select
                               id="employee-select"
                               aria-label={t("ПРОФИЛЬ", "ПРОФИЛЬ", "PROFILE")}
@@ -315,7 +322,8 @@ export function EmployeeWorkspace() {
                                   {e.name} · {e.id}
                                 </option>
                               ))}
-                            </select>
+                            </select></>}
+
                             <p>
                               {catalogName(employee.role, locale)}{" "}
                               <span>
@@ -456,6 +464,14 @@ export function EmployeeWorkspace() {
                         </p>
                       </div>
                     )}
+                    {!view.recommendations.length && view.gaps.length > 0 && <MentorSuggestions
+                      employeeId={employee.id}
+                      skillId={(view.gaps.find((gap) => gap.critical) ?? view.gaps[0]).skillId}
+                      dataset={state.normalizedDataset ?? undefined}
+                    />}
+                    {view.recommendations.length > 0 && <Link href="/chat" className={styles.mentorLink}>
+                      {t("Найти наставника по навыку", "Дағды бойынша тәлімгер табу", "Find a mentor by skill")} <span aria-hidden="true">↗</span>
+                    </Link>}
                     <div className={styles.recommendationList}>
                       {view.recommendations.slice(0, 3).map((rec, index) => {
                         const event = activity(rec.activityId);
@@ -1027,11 +1043,12 @@ export function EmployeeWorkspace() {
                       </div>
                     </details>
                   </section>
-                  {normalizedDataset && selectedEmployeeId && (
+                  {normalizedDataset && (
                     <DevelopmentEconomy
                       dataset={normalizedDataset}
-                      employeeId={selectedEmployeeId}
+                      employeeId={employee.id}
                       ledger={state.ledger}
+                      workspace={dataset ?? undefined}
                     />
                   )}
                 </>

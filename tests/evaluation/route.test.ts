@@ -2,11 +2,12 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { POST } from "@/app/api/ai/review/route";
 import { recommendForEmployee } from "@/domain/recommendation";
+import { SESSION_COOKIE_NAME, signDemoSession } from "@/lib/identity";
 
 import { loadChallengeDataset } from "../recommendation/test-utils";
 
-beforeEach(() => vi.stubEnv("OPENAI_API_KEY", ""));
 afterEach(() => { vi.unstubAllEnvs(); vi.unstubAllGlobals(); });
+beforeEach(() => { vi.stubEnv("OPENAI_API_KEY", ""); vi.stubEnv("SESSION_SECRET", "route-test-secret-at-least-thirty-two-bytes"); });
 
 const dataset = loadChallengeDataset();
 const engineResult = Object.keys(dataset.employeesById)
@@ -29,7 +30,7 @@ const post = (
 ) =>
   new Request("http://localhost:3000/api/ai/review", {
     method: "POST",
-    headers,
+    headers: { cookie: `${SESSION_COOKIE_NAME}=${signDemoSession(engineResult.employeeId)}`, ...headers },
     body: JSON.stringify(body),
   });
 
@@ -46,6 +47,34 @@ describe("AI route", () => {
     expect(fetcher).not.toHaveBeenCalled();
   });
 
+
+  it("rejects anonymous requests and another employee's private server evidence", async () => {
+    const anonymous = await POST(post(requestFixture(), { "content-type": "application/json", cookie: "" }));
+    expect(anonymous.status).toBe(401);
+    expect(await anonymous.json()).toEqual({ error: "AUTH_REQUIRED" });
+    const other = Object.values(dataset.employeesById).find((employee) => employee.id !== engineResult.employeeId && employee.role !== "HR Business Partner")!;
+    const forbidden = await POST(post(requestFixture(), { "content-type": "application/json", cookie: `${SESSION_COOKIE_NAME}=${signDemoSession(other.id)}` }));
+    expect(forbidden.status).toBe(403);
+    expect(forbidden.headers.get("cache-control")).toBe("no-store");
+    expect(await forbidden.json()).toEqual({ error: "FORBIDDEN" });
+    const changed = await POST(post(requestFixture(), { "content-type": "application/json", "x-career-identity": other.id }));
+    expect(changed.status).toBe(409);
+    expect(await changed.json()).toEqual({ error: "SESSION_CHANGED" });
+  });
+
+  it("allows a trusted HR session and fails safely when production identity is unavailable", async () => {
+    vi.stubEnv("LLM_API_KEY", "");
+    const hr = Object.values(dataset.employeesById).find((employee) => employee.role === "HR Business Partner")!;
+    const permitted = await POST(post(requestFixture(), { "content-type": "application/json", cookie: `${SESSION_COOKIE_NAME}=${signDemoSession(hr.id)}` }));
+    expect(permitted.status).toBe(200);
+    expect((await permitted.json()).status).toBe("no_key");
+    const request = post(requestFixture());
+    vi.stubEnv("NODE_ENV", "production");
+    vi.stubEnv("SESSION_SECRET", "");
+    const unavailable = await POST(request);
+    expect(unavailable.status).toBe(503);
+    expect(await unavailable.json()).toEqual({ error: "IDENTITY_UNAVAILABLE" });
+  });
   it("returns a no-store localized fallback without a key", async () => {
     vi.stubEnv("LLM_API_KEY", "");
     const response = await POST(post(requestFixture()));

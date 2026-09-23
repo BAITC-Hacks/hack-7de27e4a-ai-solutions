@@ -10,10 +10,10 @@ export function readProviderConfig(env: Environment = process.env): ProviderConf
   let isOpenAI = false;
   try {
     const url = new URL(baseUrl);
-    isOpenAI = url.protocol === 'https:' && url.hostname === 'api.openai.com';
+    isOpenAI = url.origin === 'https://api.openai.com' && !url.username && !url.password;
   } catch { /* Provider validation reports an invalid endpoint without exposing it. */ }
   return {
-    apiKey: env.LLM_API_KEY?.trim() || env.OPENAI_API_KEY?.trim() || '',
+    apiKey: env.LLM_API_KEY?.trim() || (isOpenAI ? env.OPENAI_API_KEY?.trim() : '') || '',
     baseUrl,
     model: env.LLM_MODEL?.trim() || (isOpenAI ? OPENAI_MODEL : ''),
   };

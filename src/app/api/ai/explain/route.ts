@@ -1,6 +1,7 @@
 import { reviewRequestSchema } from "@/lib/evaluation/ai-contracts";
 import { createReviewProvider } from "../review/provider";
 import { reviewEvidence } from "../review/service";
+
 import { readProviderConfig } from "../provider-config";
 
 export const runtime = "nodejs";
@@ -134,9 +135,7 @@ export async function POST(request: Request): Promise<Response> {
       );
     }
     const config = readProviderConfig();
-    const provider = config.apiKey
-      ? createReviewProvider(config)
-      : undefined;
+    const provider = config.apiKey ? createReviewProvider(config) : undefined;
     const configuredTimeout = Number(
       process.env.LLM_TIMEOUT_MS?.trim() || 2_500,
     );

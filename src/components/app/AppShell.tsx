@@ -6,19 +6,22 @@ import { useEmployeeStore } from "@/state/EmployeeStoreProvider";
 import styles from "./app-shell.module.css";
 import { useI18n } from "@/lib/i18n/I18nProvider";
 import { isLocale, LOCALES, localeNames } from "@/lib/i18n/core";
+import { useIdentity } from "@/components/identity/IdentityProvider";
 
-function Icon({ name, size = 20 }: { name: "path" | "chart" | "shield" | "upload" | "book"; size?: number }) {
+function Icon({ name, size = 20 }: { name: "path" | "chart" | "shield" | "upload" | "book" | "chat"; size?: number }) {
   const paths = {
     path: <><rect x="3" y="3" width="7" height="7" rx="2" /><rect x="14" y="3" width="7" height="7" rx="2" /><rect x="3" y="14" width="7" height="7" rx="2" /><path d="M17.5 14v7m-3.5-3.5h7" /></>,
     chart: <><path d="M4 4v16h16M8 15v-4m5 4V7m5 8V3" /></>,
     shield: <><path d="m12 3 8 3v6c0 5-8 9-8 9s-8-4-8-9V6z" /><path d="m8.5 11.5 2.5 2.5 4.5-5" /></>,
     upload: <><path d="M12 16V3m-4 4 4-4 4 4M4 15v5h16v-5" /></>,
     book: <><path d="M12 5v15M3 4c4-1 7 0 9 2 2-2 5-3 9-2v15c-4-1-7 0-9 2-2-2-5-3-9-2z" /></>,
+    chat: <><path d="M21 11.5a8.5 8.5 0 0 1-8.5 8.5H4l-2 2V11.5A8.5 8.5 0 0 1 10.5 3h2a8.5 8.5 0 0 1 8.5 8.5Z"/><path d="M7 9h9M7 13h6"/></>,
   };
   return <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">{paths[name]}</svg>;
 }
 const sections = [
   { href: "/employee", label: "Моя траектория", kk: "Менің даму жолым", en: "My career path", icon: "path" as const },
+  { href: "/chat", label: "Обмен навыками", kk: "Дағды алмасу", en: "Skill exchange", icon: "chat" as const },
   { href: "/hr", label: "HR-аналитика", kk: "HR талдауы", en: "HR analytics", icon: "chart" as const },
   { href: "/trust", label: "Проверка решений", kk: "Шешімдерді тексеру", en: "Decision assurance", icon: "shield" as const },
 ];
@@ -30,12 +33,13 @@ export function AppShell({ children, access, onAccessChange }: {
   const path = usePathname();
   const router = useRouter();
   const { locale, setLocale, t, number } = useI18n();
+  const identity = useIdentity();
   const dataset = useEmployeeStore((s) => s.dataset);
   const selectedId = useEmployeeStore((s) => s.selectedEmployeeId);
   const count = useEmployeeStore((s) => s.ledger.length);
   const employee = dataset?.employees.find((e) => e.id === selectedId);
   const current = sections.find((s) => s.href === path);
-  const initials = employee?.name.split(/\s+/).slice(0, 2).map((part) => part[0]).join("") ?? "CQ";
+  const initials = (identity.session?.fullName ?? employee?.name)?.split(/\s+/).slice(0, 2).map((part) => part[0]).join("") ?? "CQ";
   const changeMode = (next: "employee" | "hr") => {
     if (next !== access) onAccessChange(next);
     if (next === "employee" && (path === "/hr" || path === "/trust")) router.push("/employee");
@@ -83,7 +87,8 @@ export function AppShell({ children, access, onAccessChange }: {
               <button type="button" data-testid="mode-hr" aria-pressed={access === "hr"} onClick={() => changeMode("hr")}>HR</button>
             </div>
           </div>
-          <Link href="/employee#career-main" className={styles.userAvatar} aria-label={employee ? t("Профиль: {name}", "Профиль: {name}", "Profile: {name}", { name: employee.name }) : t("Кабинет сотрудника", "Қызметкер кабинеті", "Employee workspace")} title={employee?.name ?? t("Кабинет сотрудника", "Қызметкер кабинеті", "Employee workspace")}>{initials}</Link>
+          <button type="button" className={styles.userAvatar} onClick={() => identity.openPicker()} aria-label={t("Сменить демо-профиль", "Демо профилін ауыстыру", "Switch demo profile")} title={identity.session?.fullName ?? t("Выбрать профиль", "Профильді таңдау", "Choose a profile")}>{initials}</button>
+          {identity.session && <button type="button" className={styles.signOut} onClick={() => void identity.logout()} aria-label={t("Выйти из демо-профиля", "Демо профилінен шығу", "Sign out of demo profile")} title={t("Выйти", "Шығу", "Sign out")}><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="1.7" aria-hidden="true"><path d="M9 5H4v14h5m5-14 7 7-7 7m7-7H9"/></svg></button>}
         </div>
       </header>
       <div id="page-content" tabIndex={-1} className={styles.content}>{children}</div>

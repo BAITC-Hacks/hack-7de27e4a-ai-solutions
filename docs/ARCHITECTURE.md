@@ -3,12 +3,27 @@
 > Этот файл Codex читает **первым** в каждой задаче. Он и `docs/CONTRACTS.md` — единая
 > техническая модель продукта. Данные — в `docs/DATASET.md`.
 
-> **Актуальная интеграция 2026-09-23, решение 18:** `/` и `/demo` → `/employee`;
-> согласованные страницы RU/KK/EN используют `AppProviders` и один `sharedEmployeeStore`
-> с ledger в памяти вкладки. IndexedDB, private projection и XP сохранены как модули,
-> но не подключены к этим страницам. Текущий UI вызывает `/api/ai/explain` с ограниченным
-> числовым evidence; `/api/ai/review` сохраняет отдельный IDs-only контракт.
+> **Актуальная интеграция 2026-09-23, решения 18–19:** UI на RU/KK/EN сохранён;
+> `/` и `/demo` → `/employee`, Skill Exchange доступен на `/chat`. `AppProviders`
+> связывает `IdentityProvider` и один `sharedEmployeeStore`. Сервер выдаёт Employee
+> только его профиль/историю, HR — полный bundled dataset; чужой чат HR получает
+> только как агрегаты. Синтетическая demo persona не заменяет SSO.
+> Demo snapshots и отдельный ledger импорта живут в памяти и сбрасываются при reload;
+> чат и production session-secret сохраняются в исключённом из Git/Docker build context
+> `data/runtime`. IndexedDB и прежний XP-модуль не используются активным UI. UI вызывает `/api/ai/explain`
+> с числовым evidence; IDs-only `/api/ai/review` разрешён для собственного профиля или HR.
 > Точные границы и итог проверки — в [`INTEGRATION.md`](INTEGRATION.md).
+
+> Дополнение из `main f287b406`: PR #10 подключает отдельный offline-каталог внешнего
+> обучения без изменения ranking/readiness/ledger; PR #11 — частичный judge import
+> с режимами append/replace на текущем доступном normalized dataset. Исторический gate этой версии:
+> 268/268 тестов в 32 файлах и production build с полной проверкой TypeScript — PASS.
+
+> `main 0d068536` добавляет активные DevelopmentEconomy, HR participation и HR Agent.
+> Economy читает текущий normalized dataset/ledger, mandatory даёт 0; обмен/вызовы/opt-out
+> локальны странице и не являются реальной выдачей наград. HR Agent имеет серверный HR guard,
+> шесть read-only tools и bounded model loop; participation показывает факты 6/12 месяцев,
+> не ML-прогноз увольнения. Текущий общий gate: `REQUIREMENTS_AUDIT.md`.
 
 ## 1. Что мы строим
 
@@ -31,7 +46,7 @@ Career Quest — не обёртка над LLM и не набор HR-графи
 | Слой | Выбор | Почему |
 |---|---|---|
 | Приложение | Next.js (App Router) + TypeScript | Один проект, server route для LLM, сильный UI. |
-| UI | Tailwind + shadcn/ui + Recharts | Скорость сборки и визуальная целостность. |
+| UI | React + CSS Modules, SVG/таблицы | Согласованный бело-зелёный интерфейс RU/KK/EN; ранний план Tailwind/shadcn/Recharts не является зависимостью активного UI. |
 | Контракты | Zod | Валидация файлов жюри и единый источник типов. |
 | CSV | PapaParse | Импорт `activity_history.csv` в браузере. |
 | Состояние | Zustand | Датасет, симуляция и progress ledger без БД. |
@@ -40,11 +55,11 @@ Career Quest — не обёртка над LLM и не набор HR-графи
 
 Пакетный менеджер — **pnpm** (`packageManager` в `package.json`), Node **22**.
 
-**Почему без базы данных.** За пять часов постоянное хранилище не повышает оценку
-пропорционально риску. Импортированный датасет живёт в Zustand, изменения — в локальном
-immutable progress ledger, повторный импорт полностью воспроизводит состояние. В production
-ledger заменяется API и SQL без изменения recommendation engine. Это ещё и privacy-история:
-данные не покидают браузер.
+**Хранение без SQL.** Импортированный датасет живёт в Zustand, изменения — в локальном
+immutable progress ledger. Импортированные исходные файлы остаются в браузере;
+ограниченное evidence может передаваться сервису объяснений. Подтверждённый demo-прогресс
+восстанавливается из snapshots при выборе персоны в той же вкладке. Перезагрузка сбрасывает
+карьерный ledger; переписка Skill Exchange сохраняется отдельно в серверном JSON-файле.
 
 ## 3. Карта системы
 

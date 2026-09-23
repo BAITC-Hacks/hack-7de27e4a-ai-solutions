@@ -2111,3 +2111,4 @@
     transition: none;
   }
 }
+.profilePicker{display:flex;align-items:center;gap:10px;padding:0;border:0;background:transparent;color:inherit;font:inherit;font-size:22px;font-weight:650;text-align:left;cursor:pointer}.profilePicker svg{flex:0 0 16px}.profilePicker:focus-visible,.mentorLink:focus-visible{outline:3px solid #a5dfbd;outline-offset:4px;border-radius:6px}.mentorLink{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:0 0 15px;padding:13px 16px;border:1px solid #dcebe1;border-radius:12px;color:#167148;background:#f4faf5;font-size:13px;font-weight:600;text-decoration:none}.mentorLink:hover{background:#e8f5eb}.mentorLink span{font-size:18px}@media(max-width:600px){.profilePicker{font-size:18px}}

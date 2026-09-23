@@ -820,6 +820,12 @@ const fixedMessages: readonly (readonly [
     "Dataset files have different snapshot dates",
   ],
   [
+    "History date must not be after the dataset snapshot",
+    "Дата записи истории не может быть позже даты среза данных",
+    "Тарих жазбасының күні деректер күнінен кейін болмауы керек",
+    "History date must not be after the dataset snapshot",
+  ],
+  [
     "Expected ISO date YYYY-MM-DD",
     "Ожидается дата в формате ГГГГ-ММ-ДД",
     "Күн ЖЖЖЖ-АА-КК пішімінде болуы керек",

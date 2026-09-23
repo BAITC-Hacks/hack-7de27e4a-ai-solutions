@@ -61,9 +61,7 @@ function catalog(courses: ExternalCourse[]): ExternalCourseCatalog {
   };
 }
 
-function findEmployeeWithUncoveredCatalogSkill(
-  dataset: NormalizedDataset,
-): {
+function findEmployeeWithUncoveredCatalogSkill(dataset: NormalizedDataset): {
   employeeId: string;
   skillId: string;
   currentLevel: ProficiencyLevel;
@@ -126,15 +124,23 @@ describe("External Learning Layer", () => {
 
     expect(bundledCatalog.meta.mode).toBe("curated_offline");
     expect(bundledCatalog.courses).toHaveLength(35);
-    expect(new Set(bundledCatalog.courses.map((item) => item.id)).size).toBe(35);
-    expect(new Set(bundledCatalog.courses.map((item) => item.url)).size).toBe(35);
-    expect([...prioritySkills].every((skillId) => coveredSkills.has(skillId))).toBe(true);
+    expect(new Set(bundledCatalog.courses.map((item) => item.id)).size).toBe(
+      35,
+    );
+    expect(new Set(bundledCatalog.courses.map((item) => item.url)).size).toBe(
+      35,
+    );
+    expect(
+      [...prioritySkills].every((skillId) => coveredSkills.has(skillId)),
+    ).toBe(true);
     expect(
       bundledCatalog.courses.every(
         (item) =>
           item.source === "external" &&
           item.url.startsWith("https://") &&
-          item.developsSkillIds.every((skillId) => Boolean(dataset.skillsById[skillId])),
+          item.developsSkillIds.every((skillId) =>
+            Boolean(dataset.skillsById[skillId]),
+          ),
       ),
     ).toBe(true);
   });
@@ -235,13 +241,18 @@ describe("External Learning Layer", () => {
         durationHours: index + 1,
       }),
     );
-    const otherLanguage: PreferredLanguage = fixture.language === "kk" ? "ru" : "kk";
+    const otherLanguage: PreferredLanguage =
+      fixture.language === "kk" ? "ru" : "kk";
     const plan = buildEmployeeExternalLearningPlan(
       dataset,
       catalog([
         ...sameLanguage,
-        course("EXT_C_OTHER_LANGUAGE", fixture.skillId, [otherLanguage], { durationHours: 1 }),
-        course("EXT_D_OTHER_LANGUAGE", fixture.skillId, [otherLanguage], { durationHours: 2 }),
+        course("EXT_C_OTHER_LANGUAGE", fixture.skillId, [otherLanguage], {
+          durationHours: 1,
+        }),
+        course("EXT_D_OTHER_LANGUAGE", fixture.skillId, [otherLanguage], {
+          durationHours: 2,
+        }),
       ]),
       fixture.employeeId,
     );
@@ -287,7 +298,9 @@ describe("External Learning Layer", () => {
     const plan = buildEmployeeExternalLearningPlan(
       dataset,
       catalog([
-        course("EXT_INTERNAL_ALREADY_COVERS", fixture!.skillId, [fixture!.language]),
+        course("EXT_INTERNAL_ALREADY_COVERS", fixture!.skillId, [
+          fixture!.language,
+        ]),
       ]),
       fixture!.employeeId,
     );
@@ -303,7 +316,9 @@ describe("External Learning Layer", () => {
 
     const after = recommendForEmployee(dataset, employeeId);
     expect(after).toEqual(before);
-    expect(after.recommendations.every((item) => item.activityId.startsWith("EV_"))).toBe(true);
+    expect(
+      after.recommendations.every((item) => item.activityId.startsWith("EV_")),
+    ).toBe(true);
     expect(after.gapAnalysis.readiness).toBe(before.gapAnalysis.readiness);
     expect(after.effectiveProfile.effectiveSkills).toEqual(
       before.effectiveProfile.effectiveSkills,
@@ -354,8 +369,10 @@ describe("External Learning Layer", () => {
       }),
     );
 
-    expect(html).toContain("Внутри компании пока нет подходящего шага");
-    expect(html).toContain("не участвуют в top-3");
+    expect(html).toContain("Курсы для навыков без внутреннего обучения");
+    expect(html).toContain(
+      "Прогресс по внешним курсам не меняет карьерную готовность: их результат пока не подтверждён.",
+    );
     expect(html).toContain("эффект не подтверждён данными компании");
     expect(html).toContain('target="_blank"');
     expect(html).toContain('rel="noopener noreferrer"');

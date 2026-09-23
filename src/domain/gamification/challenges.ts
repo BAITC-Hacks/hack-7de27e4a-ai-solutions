@@ -1,7 +1,11 @@
 import type { LedgerEvent } from "@/state/intelligenceAdapter";
 import type { NormalizedDataset } from "@/lib/contracts";
 
-import { analyzeGaps, buildEffectiveEmployeeProfile, resolveTarget } from "../recommendation/profile";
+import {
+  analyzeGaps,
+  buildEffectiveEmployeeProfile,
+  resolveTarget,
+} from "../recommendation/profile";
 import type {
   AcceptedChallenge,
   ChallengeProposal,
@@ -9,6 +13,7 @@ import type {
   GamificationState,
 } from "./types";
 import { emptyGamificationState } from "./types";
+import { completedActivities } from "./completions";
 
 /** Срок считается от даты среза датасета: системные часы сломали бы воспроизводимость. */
 export function deadlineFrom(snapshotDate: string, windowDays: number): string {
@@ -93,29 +98,35 @@ export function challengeProgress(
   ledger: readonly LedgerEvent[] = [],
 ): ChallengeProgress[] {
   const profile = buildEffectiveEmployeeProfile(dataset, employeeId);
-  const mine = state.challenges.filter((item) => item.employeeId === employeeId);
+  const mine = state.challenges.filter(
+    (item) => item.employeeId === employeeId,
+  );
 
   return mine.map((challenge) => {
     let current = 0;
     if (challenge.kind === "close_critical_gap" && challenge.skillId) {
       current = profile.effectiveSkills[challenge.skillId] ?? 0;
     } else if (challenge.kind === "complete_voluntary") {
-      const fromHistory = (dataset.historyByEmployeeId[employeeId] ?? []).filter(
+      current = completedActivities(dataset, employeeId, ledger).filter(
         (record) =>
-          record.status === "completed" &&
-          record.date >= challenge.acceptedAt &&
-          !dataset.eventsById[record.eventId]?.mandatory,
+          record.at >= challenge.acceptedAt &&
+          record.at <= challenge.deadline &&
+          dataset.eventsById[record.activityId]?.mandatory === false,
       ).length;
-      const fromLedger = ledger.filter(
-        (event) =>
-          event.employeeId === employeeId &&
-          event.effectiveDate >= challenge.acceptedAt &&
-          !dataset.eventsById[event.activityId]?.mandatory,
-      ).length;
-      current = fromHistory + fromLedger;
     } else {
-      current = state.mentorships.filter((item) => item.mentorId === employeeId).length;
+      current = state.mentorships.filter(
+        (item) =>
+          item.mentorId === employeeId &&
+          item.closedAt >= challenge.acceptedAt &&
+          item.closedAt <= challenge.deadline &&
+          item.closedAt <= dataset.meta.asOfDate,
+      ).length;
     }
-    return { challenge, current, target: challenge.target, completed: current >= challenge.target };
+    return {
+      challenge,
+      current,
+      target: challenge.target,
+      completed: current >= challenge.target,
+    };
   });
 }
