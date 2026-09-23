@@ -40,6 +40,10 @@ corepack pnpm dev
 | `/hr` | HR-агрегаты и operational queue без employee leaderboard |
 | `/trust` | Trust gates и состояние bounded LLM/fallback |
 
+В `/demo` можно использовать набор организаторов или выбрать четыре файла из
+`data/source/`. Переключение между employee, HR и Trust — демонстрация видимости экранов,
+а не production-аутентификация.
+
 Docker:
 
 ```bash
@@ -117,7 +121,7 @@ docker compose down
 Последний release-прогон на этой ветке:
 
 - TypeScript typecheck — **PASS**;
-- Vitest — **134/134 PASS** в 17 test-файлах;
+- Vitest — **152/152 PASS** в 19 test-файлах;
 - Next.js production build — **PASS**;
 - Docker image build — **PASS**; `/`, `/demo`, `/hr`, `/trust` вернули HTTP 200;
 - интерактивный browser smoke на Docker-сборке — What-if, четыре judge file inputs, HR,
@@ -135,10 +139,16 @@ docker compose down
 - Completion ledger хранится локально в IndexedDB и изолирован fingerprint конкретного dataset.
 - Browser-import dataset использует deterministic explanation: внешний critic не смешивает его
   с server-side bundled evidence.
+- Текст из импортированного датасета трактуется как данные, а не как инструкции модели.
 
 Это hackathon role-scoped demo, **не production authentication**. Для реальных данных нужны
 корпоративные SSO/RBAC, серверное хранилище и audit log. IndexedDB не синхронизируется между
 устройствами.
+
+GitHub Actions организации может завершиться до запуска команд проекта из-за billing lock.
+В этом случае release gate выполняется локально командами выше; детали и ограничения описаны в
+[`docs/INTEGRATION.md`](docs/INTEGRATION.md), метрики и adversarial-кейсы — в
+[`docs/EVALUATION.md`](docs/EVALUATION.md).
 
 ## Документация
 

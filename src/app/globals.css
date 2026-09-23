@@ -18,7 +18,11 @@
   --blue: #dcecff;
   --amber: #f4c95d;
   --danger: #a83c3c;
+  --cq-mint: #eef8f3;
   color-scheme: light;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
 }
 * {
   box-sizing: border-box;
@@ -39,7 +43,8 @@ body {
 }
 button,
 input,
-select {
+select,
+textarea {
   color: inherit;
   font: inherit;
 }
@@ -47,6 +52,22 @@ select {
 button,
 select {
   cursor: pointer;
+}
+
+button:disabled {
+  cursor: not-allowed;
+}
+
+button,
+select,
+summary,
+a {
+  -webkit-tap-highlight-color: transparent;
+}
+
+::selection {
+  background: #cfebdb;
+  color: #124330;
 }
 
 button:focus-visible,
@@ -1188,5 +1209,12 @@ a:focus-visible {
 @media (prefers-reduced-motion: reduce) {
   html {
     scroll-behavior: auto;
+  }
+
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
   }
 }

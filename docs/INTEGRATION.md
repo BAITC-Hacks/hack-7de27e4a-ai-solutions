@@ -37,7 +37,7 @@ redirects/cache запрещены, upstream body ограничен 128 KB. Б�
 
 ```text
 corepack pnpm typecheck                              PASS
-corepack pnpm test                                   134/134 PASS (17 files)
+corepack pnpm test                                   152/152 PASS (19 files)
 NEXT_TELEMETRY_DISABLED=1 corepack pnpm build        PASS
 docker compose up --build                            IMAGE BUILD PASS
 ```
