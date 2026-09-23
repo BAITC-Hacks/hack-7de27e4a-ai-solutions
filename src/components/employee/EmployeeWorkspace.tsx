@@ -6,6 +6,11 @@ import type { PathStrategy } from "../../domain/simulation/planner";
 import { nearestSession } from "../../domain/simulation/simulator";
 import { DatasetUpload } from "./DatasetUpload";
 import { Modal } from "./Modal";
+import { useEmployeeExplanation } from "./useEmployeeExplanation";
+import {
+  explanationStatusLabels,
+  recommendationExplanation,
+} from "./ai-explanation";
 import styles from "./employee.module.css";
 
 const percent = (value: number | null | undefined) =>
@@ -26,11 +31,19 @@ const strategyNames: Record<PathStrategy, string> = {
   stretch: "Больше роста",
 };
 
-export function EmployeeWorkspace({ demo = false }: { demo?: boolean }) {
+export function EmployeeWorkspace() {
   const state = useEmployeeStore((s) => s);
   const { dataset, selectedEmployeeId, simulation } = state;
   const employee = dataset?.employees.find((e) => e.id === selectedEmployeeId);
   const view = selectedEmployeeId ? state.views[selectedEmployeeId] : null;
+  const explanation = useEmployeeExplanation(
+    view,
+    employee?.preferredLanguage,
+    `${state.revision}:${selectedEmployeeId ?? ""}`,
+    state.status === "ready",
+  );
+  const explanationText = (recommendation: Recommendation) =>
+    recommendationExplanation(recommendation, explanation.result);
   const [evidence, setEvidence] = useState<{
     primary: Recommendation;
     alternative?: Recommendation;
@@ -62,7 +75,7 @@ export function EmployeeWorkspace({ demo = false }: { demo?: boolean }) {
         {activity(recommendation.activityId)?.title ??
           recommendation.activityId}
       </h3>
-      <p>{recommendation.deterministicExplanation}</p>
+      <p>{explanationText(recommendation)}</p>
       <div className={styles.factorList}>
         {Object.entries(recommendation.factorScores).map(([name, value]) => (
           <div key={name}>
@@ -88,54 +101,8 @@ export function EmployeeWorkspace({ demo = false }: { demo?: boolean }) {
   );
   return (
     <div className={styles.workspace}>
-      <a className={styles.skipLink} href="#career-main">
-        К содержимому
-      </a>
-      <aside className={styles.sidebar}>
-        <a href="#career-main" className={styles.brand}>
-          <span className={styles.brandMark}>
-            cq<span>↗</span>
-          </span>
-          <span>
-            career<span className={styles.brandLight}>quest</span>
-          </span>
-        </a>
-        <div className={styles.sideLabel}>ПРОСТРАНСТВО РАЗВИТИЯ</div>
-        <nav aria-label="Разделы профиля">
-          <a href="#career-main" className={styles.navActive}>
-            <span aria-hidden="true">◈</span> Моя траектория{" "}
-            <span aria-hidden="true">↗</span>
-          </a>
-          <a href="#recommendations">
-            <span aria-hidden="true">◎</span> Следующий шаг
-          </a>
-          <a href="#career-path">
-            <span aria-hidden="true">⌁</span> Карьерный план
-          </a>
-          <a href="#progress-log">
-            <span aria-hidden="true">◷</span> История прогресса
-          </a>
-        </nav>
-        <div className={styles.sidebarBottom}>
-          <span className={styles.smallDot} />
-          Осознанный рост, шаг за шагом<p>Навыки → возможности → ваша цель</p>
-        </div>
-      </aside>
       <div className={styles.mainWrap}>
-        <header className={styles.topbar}>
-          <span>
-            Личный кабинет <span aria-hidden="true">/</span>{" "}
-            <strong>Моя траектория</strong>
-          </span>
-          <span className={styles.privacy}>◉ Личная сессия</span>
-        </header>
         <main id="career-main" className={styles.main}>
-          {demo && (
-            <div className={styles.demoNotice}>
-              Демонстрационный стенд · синтетический E0028 · ответы тестового
-              адаптера. Реальный движок A и исходный датасет ещё не подключены.
-            </div>
-          )}
           <div className={styles.titleRow}>
             <div>
               <p className={styles.eyebrow}>EMPLOYEE DIGITAL TWIN</p>
@@ -380,8 +347,9 @@ export function EmployeeWorkspace({ demo = false }: { demo?: boolean }) {
                             : "Нет подходящего шага"}
                         </h3>
                         <p>
-                          {top?.deterministicExplanation ??
-                            "Подходящие активности появятся после обновления цели или каталога."}
+                          {top
+                            ? explanationText(top)
+                            : "Подходящие активности появятся после обновления цели или каталога."}
                         </p>
                         {top && (
                           <button
@@ -405,12 +373,8 @@ export function EmployeeWorkspace({ demo = false }: { demo?: boolean }) {
                         </span>
                         <h2 id="recommendation-title">Начните с этого</h2>
                       </div>
-                      <span className={styles.tag}>
-                        {view.explanationStatus === "verified-ai"
-                          ? "AI · проверено"
-                          : view.explanationStatus === "fallback"
-                            ? "Резервное объяснение"
-                            : "Расчёт движка"}
+                      <span className={styles.tag} role="status">
+                        {explanationStatusLabels[explanation.status]}
                       </span>
                     </div>
                     {!view.recommendations.length && (
@@ -456,7 +420,7 @@ export function EmployeeWorkspace({ demo = false }: { demo?: boolean }) {
                                 </span>
                               </div>
                               <h3>{event?.title ?? rec.activityId}</h3>
-                              <p>{rec.deterministicExplanation}</p>
+                              <p>{explanationText(rec)}</p>
                               <div className={styles.pills}>
                                 {Object.entries(rec.expectedGains).map(
                                   ([id, gain]) => (
@@ -797,7 +761,8 @@ export function EmployeeWorkspace({ demo = false }: { demo?: boolean }) {
             </>
           )}
           <p className={styles.muted}>
-            Версия: {view?.engineVersion} · {view?.explanationStatus}
+            Версия: {view?.engineVersion} ·{" "}
+            {explanationStatusLabels[explanation.status]}
           </p>
         </Modal>
       )}
