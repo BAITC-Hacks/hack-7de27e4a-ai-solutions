@@ -14,11 +14,22 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 12
     steps:
-      - uses: actions/checkout@v4
+      # Keep CI compatible with organizations that block reusable actions.
+      - name: Checkout source
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          curl --fail --silent --show-error --location \
+            --header "Authorization: Bearer ${GH_TOKEN}" \
+            --header "Accept: application/vnd.github+json" \
+            --header "X-GitHub-Api-Version: 2022-11-28" \
+            "${GITHUB_API_URL}/repos/${GITHUB_REPOSITORY}/tarball/${GITHUB_SHA}" \
+            | tar --extract --gzip --strip-components=1
 
-      - uses: actions/setup-node@v4
-        with:
-          node-version-file: .nvmrc
+      - name: Verify Node.js runtime
+        run: |
+          node --version
+          node -e "const major = Number(process.versions.node.split('.')[0]); if (major < 22) { throw new Error('Node.js 22+ is required') }"
 
       - name: Install pnpm
         run: npm install --global pnpm@11.19.0
