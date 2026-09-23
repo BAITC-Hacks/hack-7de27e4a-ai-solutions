@@ -1,6 +1,6 @@
 "use client";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import type { ReactNode } from "react";
 import { useEmployeeStore } from "@/state/EmployeeStoreProvider";
 import styles from "./app-shell.module.css";
@@ -28,6 +28,7 @@ export function AppShell({ children, access, onAccessChange }: {
   onAccessChange: (access: "employee" | "hr") => void;
 }) {
   const path = usePathname();
+  const router = useRouter();
   const { locale, setLocale, t, number } = useI18n();
   const dataset = useEmployeeStore((s) => s.dataset);
   const selectedId = useEmployeeStore((s) => s.selectedEmployeeId);
@@ -35,6 +36,11 @@ export function AppShell({ children, access, onAccessChange }: {
   const employee = dataset?.employees.find((e) => e.id === selectedId);
   const current = sections.find((s) => s.href === path);
   const initials = employee?.name.split(/\s+/).slice(0, 2).map((part) => part[0]).join("") ?? "CQ";
+  const changeMode = (next: "employee" | "hr") => {
+    if (next !== access) onAccessChange(next);
+    if (next === "employee" && (path === "/hr" || path === "/trust")) router.push("/employee");
+    if (next === "hr" && path === "/employee") router.push("/hr");
+  };
   return <div className={styles.shell}>
     <a href="#page-content" className={styles.skip}>{t("К содержимому", "Мазмұнға өту", "Skip to content")}</a>
     <aside className={styles.sidebar}>
@@ -58,7 +64,7 @@ export function AppShell({ children, access, onAccessChange }: {
       <div className={styles.bottom}>
         <Link href="/employee#data-upload" className={styles.uploadLink}><Icon name="upload" size={18} />{dataset ? t("Данные пространства", "Жұмыс кеңістігінің деректері", "Workspace data") : t("Загрузить данные", "Деректерді жүктеу", "Upload data")}</Link>
         <details className={styles.help}>
-          <summary><Icon name="book" size={18} />{t("Как это работает", "Бұл қалай жұмыс істейді", "How it works")}<span>+</span></summary>
+          <summary><Icon name="book" size={18} />{t("Как это работает", "Бұл қалай жұмыс істейді", "How it works")}</summary>
           <ol><li>{t("Выберите профиль.", "Профильді таңдаңыз.", "Choose a profile.")}</li><li>{t("Примерьте рекомендованный шаг.", "Ұсынылған қадамның нәтижесін алдын ала көріңіз.", "Preview a recommended step.")}</li><li>{t("Подтвердите завершение — прогресс обновится во всех разделах.", "Орындалғанын растаңыз — ілгерілеу барлық бөлімде жаңарады.", "Confirm completion to update progress across all sections.")}</li></ol>
         </details>
         <div className={styles.partner}><span className={styles.partnerDot} />CAREER QUEST<span>HackAlem AI</span></div>
@@ -70,7 +76,13 @@ export function AppShell({ children, access, onAccessChange }: {
         <div className={styles.headerActions}>
           <span className={styles.session} aria-live="polite"><i />{dataset ? t("Данные загружены", "Деректер жүктелді", "Data loaded") : t("Демо", "Демо", "Demo")}</span>
           <label className={styles.mode}><span>{t("Язык", "Тіл", "Language")}</span><select id="interface-locale" data-testid="locale-select" aria-label={t("Язык интерфейса", "Интерфейс тілі", "Interface language")} value={locale} onChange={(e) => { if (isLocale(e.target.value)) setLocale(e.target.value); }}>{LOCALES.map((language) => <option key={language} value={language} lang={language}>{localeNames[language]}</option>)}</select></label>
-          <label className={styles.mode}><span>{t("Режим демо", "Демо режимі", "Demo mode")}</span><select aria-label={t("Режим демо", "Демо режимі", "Demo mode")} value={access} onChange={(e) => onAccessChange(e.target.value === "hr" ? "hr" : "employee")}><option value="employee">{t("Сотрудник", "Қызметкер", "Employee")}</option><option value="hr">HR</option></select></label>
+          <div className={styles.mode}>
+            <span>{t("Режим демо", "Демо режимі", "Demo mode")}</span>
+            <div className={styles.modeSwitch} role="group" aria-label={t("Режим демо", "Демо режимі", "Demo mode")}>
+              <button type="button" data-testid="mode-employee" aria-pressed={access === "employee"} onClick={() => changeMode("employee")}>{t("Сотрудник", "Қызметкер", "Employee")}</button>
+              <button type="button" data-testid="mode-hr" aria-pressed={access === "hr"} onClick={() => changeMode("hr")}>HR</button>
+            </div>
+          </div>
           <Link href="/employee#career-main" className={styles.userAvatar} aria-label={employee ? t("Профиль: {name}", "Профиль: {name}", "Profile: {name}", { name: employee.name }) : t("Кабинет сотрудника", "Қызметкер кабинеті", "Employee workspace")} title={employee?.name ?? t("Кабинет сотрудника", "Қызметкер кабинеті", "Employee workspace")}>{initials}</Link>
         </div>
       </header>

@@ -23,6 +23,7 @@
 | 15 | hardening | Без production identity применяется bounded deployment-wide rate limit | Даник | caller-controlled proxy headers не обходят лимит; O(1) память |
 | 16 | hardening | Private employee projection использует canonical fingerprint полного snapshot | Манахнбет | completion виден HR/Trust после replay, но org dataset не сериализуется Employee route |
 | 17 | release | Hardened experience перенесён новым PR поверх актуального `main`; закрытый PR #3 не переиспользуется | Алихан | сохраняются main-only артефакты, каноническими становятся role-scoped routes и ID-only critic |
+| 18 | 2026-09-23 | По выбору пользователя поверх `main ef90bc9` сохраняем согласованный локальный UI на RU/KK/EN, AppProviders/sharedEmployeeStore и in-memory ledger; `/` и `/demo` ведут на `/employee` | пользователь / интегратор | решения 9, 10, 12, 14, 16 и 17 уточнены для активных страниц: IndexedDB/private projection/XP остаются отдельными модулями; текущий UI использует bounded-evidence `/api/ai/explain`, а IDs-only `/api/ai/review` сохраняется отдельно; нужен новый общий test/build gate |
 
 ## Изменения общего контракта
 

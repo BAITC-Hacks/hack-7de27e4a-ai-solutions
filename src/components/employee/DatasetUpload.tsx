@@ -393,7 +393,6 @@ export function DatasetUpload() {
                 " Деректер жиынын ауыстыру ",
                 " Replace dataset ",
               )}
-              <span aria-hidden="true">⌄</span>
             </summary>
             <div className={styles.uploadControls}>{fileControls}</div>
           </details>

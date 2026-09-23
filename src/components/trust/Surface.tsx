@@ -2,6 +2,7 @@
 import type { ReactNode } from "react";
 import Link from "next/link";
 import { useI18n } from "@/lib/i18n/I18nProvider";
+import { useDemoMode } from "@/components/app/DemoModeContext";
 import { useTrustIntegration } from "./integration";
 import styles from "../hr/dashboard.module.css";
 
@@ -39,36 +40,57 @@ function StateIcon({ locked = false }: { locked?: boolean }) {
     </span>
   );
 }
+function DataRequired({ notConnected = false }: { notConnected?: boolean }) {
+  const { t } = useI18n();
+  return (
+    <div className={styles.empty}>
+      <StateIcon />
+      <h1>
+        {notConnected
+          ? t(
+              "Данные ещё не подключены",
+              "Деректер әлі қосылмады",
+              "Data is not connected yet",
+            )
+          : t(
+              "Данные ещё не загружены",
+              "Деректер әлі жүктелмеді",
+              "No data loaded yet",
+            )}
+      </h1>
+      <p>
+        {notConnected
+          ? t(
+              "Подключите данные в кабинете сотрудника.",
+              "Қызметкер кабинетінде деректерді қосыңыз.",
+              "Connect data in the employee workspace.",
+            )
+          : t(
+              "Загрузите файлы или откройте демо в кабинете сотрудника.",
+              "Қызметкер кабинетінде файлдарды жүктеңіз немесе демоны ашыңыз.",
+              "Upload files or open the demo in the employee workspace.",
+            )}
+      </p>
+      <Link
+        className={styles.button}
+        href={notConnected ? "/employee" : "/employee#data-upload"}
+      >
+        {notConnected
+          ? t(
+              "К экрану сотрудника",
+              "Қызметкер экранына",
+              "Go to employee workspace",
+            )
+          : t("Перейти к загрузке", "Жүктеуге өту", "Go to upload")}
+      </Link>
+    </div>
+  );
+}
 export function IntegrationGate({ children }: { children: ReactNode }) {
   const { t } = useI18n();
+  const demoMode = useDemoMode();
   const integration = useTrustIntegration();
-  if (!integration)
-    return (
-      <div className={styles.empty}>
-        <StateIcon />
-        <h1>
-          {t(
-            "Данные ещё не подключены",
-            "Деректер әлі қосылмады",
-            "Data is not connected yet",
-          )}
-        </h1>
-        <p>
-          {t(
-            "Подключите данные в кабинете сотрудника.",
-            "Қызметкер кабинетінде деректерді қосыңыз.",
-            "Connect data in the employee workspace.",
-          )}
-        </p>
-        <Link className={styles.button} href="/employee">
-          {t(
-            "К экрану сотрудника",
-            "Қызметкер экранына",
-            "Go to employee workspace",
-          )}
-        </Link>
-      </div>
-    );
+  if (!integration) return <DataRequired notConnected />;
   if (integration.access !== "hr")
     return (
       <div className={styles.empty}>
@@ -76,14 +98,31 @@ export function IntegrationGate({ children }: { children: ReactNode }) {
         <h1>{t("Раздел для HR", "HR бөлімі", "HR section")}</h1>
         <p>
           {t(
-            "Выберите HR в переключателе «Режим демо».",
-            "«Демо режим» ауыстырғышында HR таңдаңыз.",
-            "Select HR in the “Demo mode” selector.",
+            "Переключитесь на HR. Ваш профиль и прогресс сохранятся.",
+            "HR режиміне ауысыңыз. Профиліңіз бен ілгерілеуіңіз сақталады.",
+            "Switch to HR. Your profile and progress will be kept.",
           )}
         </p>
-        <Link className={styles.button} href="/employee">
-          {t("Открыть кабинет", "Кабинетті ашу", "Open workspace")}
-        </Link>
+        <div className={styles.gateActions}>
+          <button
+            type="button"
+            className={styles.button}
+            disabled={!demoMode}
+            onClick={() => demoMode?.setAccess("hr")}
+          >
+            {t("Перейти в режим HR", "HR режиміне өту", "Switch to HR mode")}
+          </button>
+          <Link
+            className={`${styles.button} ${styles.secondary}`}
+            href="/employee"
+          >
+            {t(
+              "Вернуться к сотруднику",
+              "Қызметкерге оралу",
+              "Back to employee",
+            )}
+          </Link>
+        </div>
       </div>
     );
   if (integration.state === "loading")
@@ -105,5 +144,6 @@ export function IntegrationGate({ children }: { children: ReactNode }) {
         )}
       </div>
     );
+  if (!integration.analytics) return <DataRequired />;
   return <>{children}</>;
 }

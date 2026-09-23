@@ -360,7 +360,6 @@ export function EmployeeWorkspace() {
                           " Профиль туралы ",
                           " About this profile ",
                         )}
-                        <span aria-hidden="true">⌄</span>
                       </summary>
                       <div className={styles.pills}>
                         <span>{languageNames[employee.preferredLanguage]}</span>
@@ -610,12 +609,6 @@ export function EmployeeWorkspace() {
                         <span className={styles.disclosureMeta}>
                           {t("Сравнение", "Салыстыру", "Comparison")}
                         </span>
-                        <span
-                          className={styles.disclosureChevron}
-                          aria-hidden="true"
-                        >
-                          ⌄
-                        </span>
                       </summary>
                       <div className={styles.disclosureContent}>
                         <div className={styles.comparison}>
@@ -713,12 +706,6 @@ export function EmployeeWorkspace() {
                             " дағды · 0–5 ",
                             " skills · 0–5 ",
                           )}
-                        </span>
-                        <span
-                          className={styles.disclosureChevron}
-                          aria-hidden="true"
-                        >
-                          ⌄
                         </span>
                       </summary>
                       <div className={styles.disclosureContent}>
@@ -844,12 +831,6 @@ export function EmployeeWorkspace() {
                                 "4 қадамға дейін",
                                 "Up to 4 steps",
                               )}
-                        </span>
-                        <span
-                          className={styles.disclosureChevron}
-                          aria-hidden="true"
-                        >
-                          ⌄
                         </span>
                       </summary>
                       <div className={styles.disclosureContent}>
@@ -998,12 +979,6 @@ export function EmployeeWorkspace() {
                             ).length
                           }{" "}
                           {t(" завершено ", " аяқталды ", " completed ")}
-                        </span>
-                        <span
-                          className={styles.disclosureChevron}
-                          aria-hidden="true"
-                        >
-                          ⌄
                         </span>
                       </summary>
                       <div className={styles.disclosureContent}>
@@ -1185,12 +1160,6 @@ export function EmployeeWorkspace() {
                         <span className={styles.disclosureMeta}>
                           {number(view.activeActivityIds.length)}
                           {t(" в работе ", " орындалуда ", " in progress ")}
-                        </span>
-                        <span
-                          className={styles.disclosureChevron}
-                          aria-hidden="true"
-                        >
-                          ⌄
                         </span>
                       </summary>
                       <div className={styles.disclosureContent}>
