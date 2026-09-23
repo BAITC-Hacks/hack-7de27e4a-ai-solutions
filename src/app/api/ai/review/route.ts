@@ -1,28 +1,236 @@
-import { reviewRequestSchema } from '../../../../lib/evaluation/ai-contracts';
-import { createReviewProvider, readLimitedBody } from './provider';
-import { reviewEvidence } from './service';
+import { loadBundledDataset } from "@/domain/data/server";
+import { recommendForEmployee } from "@/domain/recommendation";
+import { applyActivityCompletion } from "@/domain/simulation";
+import {
+  buildCriticRequest,
+  criticApiRequestSchema,
+  runBoundedCritic,
+} from "@/lib/evaluation/critic";
 
-export const runtime = 'nodejs';
-export const dynamic = 'force-dynamic';
-const headers = { 'Cache-Control': 'no-store', 'Content-Type': 'application/json' };
+export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
+
+const MAX_BODY_BYTES = 4_096;
+const RATE_WINDOW_MS = 60_000;
+const RATE_LIMIT = 20;
+const MAX_CONCURRENT_REVIEWS = 4;
+const NO_STORE_HEADERS = { "Cache-Control": "no-store" } as const;
+
+let activeReviews = 0;
+let bundledDatasetPromise: ReturnType<typeof loadBundledDataset> | null = null;
+
+class PayloadTooLargeError extends Error {}
+
+function json(body: unknown, init: ResponseInit = {}): Response {
+  const headers = new Headers(init.headers);
+  headers.set("Cache-Control", "no-store");
+  return Response.json(body, { ...init, headers });
+}
+
+function hasAllowedOrigin(request: Request): boolean {
+  const origin = request.headers.get("origin");
+  if (!origin) return true;
+  const host = request.headers.get("host") ?? new URL(request.url).host;
+  try {
+    const parsed = new URL(origin);
+    return (parsed.protocol === "http:" || parsed.protocol === "https:") && parsed.host === host;
+  } catch {
+    return false;
+  }
+}
+
+function optionalEnvironmentValue(value: string | undefined): string | undefined {
+  const normalized = value?.trim();
+  return normalized ? normalized : undefined;
+}
+
+function configuredTimeout(value: string | undefined): number {
+  if (!value?.trim()) return 2_500;
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : 2_500;
+}
+
+export function createFixedWindowRateLimiter(limit: number, windowMs: number) {
+  let startedAt = 0;
+  let count = 0;
+  return {
+    isLimited(now = Date.now()): boolean {
+      if (!startedAt || now - startedAt >= windowMs) {
+        startedAt = now;
+        count = 1;
+        return false;
+      }
+      count += 1;
+      return count > limit;
+    },
+  };
+}
+
+// No production identity exists in this hackathon shell, so use one bounded deployment bucket.
+// This cannot be bypassed with caller-controlled proxy headers and has constant memory usage.
+const deploymentRateLimiter = createFixedWindowRateLimiter(RATE_LIMIT, RATE_WINDOW_MS);
+
+async function readBoundedJson(request: Request): Promise<unknown> {
+  const declaredLength = Number(request.headers.get("content-length"));
+  if (Number.isFinite(declaredLength) && declaredLength > MAX_BODY_BYTES) {
+    throw new PayloadTooLargeError("Request body is too large");
+  }
+  if (!request.body) throw new SyntaxError("Request body is empty");
+
+  const reader = request.body.getReader();
+  const chunks: Uint8Array[] = [];
+  let received = 0;
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    received += value.byteLength;
+    if (received > MAX_BODY_BYTES) {
+      await reader.cancel();
+      throw new PayloadTooLargeError("Request body is too large");
+    }
+    chunks.push(value);
+  }
+
+  const bytes = new Uint8Array(received);
+  let offset = 0;
+  chunks.forEach((chunk) => {
+    bytes.set(chunk, offset);
+    offset += chunk.byteLength;
+  });
+  return JSON.parse(new TextDecoder().decode(bytes));
+}
+
+function getBundledDataset() {
+  bundledDatasetPromise ??= loadBundledDataset();
+  return bundledDatasetPromise;
+}
 
 export async function POST(request: Request): Promise<Response> {
-  const origin = request.headers.get('origin');
-  if (origin) {
-    // Next's internal request URL can use localhost behind a proxy; the incoming Host is the browser-facing authority.
-    const host = request.headers.get('host') ?? new URL(request.url).host;
-    let allowed = false;
-    try { const url = new URL(origin); allowed = ['http:', 'https:'].includes(url.protocol) && url.host === host; } catch { /* Invalid Origin stays denied. */ }
-    if (!allowed) return Response.json({ error: 'ORIGIN_NOT_ALLOWED' }, { status: 403, headers });
+  if (!hasAllowedOrigin(request)) {
+    return json(
+      { error: "FORBIDDEN", message: "Cross-origin AI review requests are not accepted." },
+      { status: 403 },
+    );
   }
-  if (!request.headers.get('content-type')?.toLowerCase().startsWith('application/json')) return Response.json({ error: 'EXPECTED_JSON' }, { status: 415, headers });
-  let input: unknown;
-  try { input = JSON.parse(await readLimitedBody(request, 64000)); }
-  catch (error) { return Response.json({ error: error instanceof Error && error.message === 'BODY_TOO_LARGE' ? 'BODY_TOO_LARGE' : 'INVALID_JSON' }, { status: error instanceof Error && error.message === 'BODY_TOO_LARGE' ? 413 : 400, headers }); }
-  const parsed = reviewRequestSchema.safeParse(input);
-  if (!parsed.success) return Response.json({ error: 'INVALID_EVIDENCE', message: 'Send only language and validated candidate evidence with at least three factors.' }, { status: 400, headers });
-  const apiKey = process.env.LLM_API_KEY?.trim();
-  const provider = apiKey ? createReviewProvider({ apiKey, baseUrl: process.env.LLM_BASE_URL ?? '', model: process.env.LLM_MODEL ?? '' }) : undefined;
-  const result = await reviewEvidence(parsed.data, { provider, timeoutMs: Number(process.env.LLM_TIMEOUT_MS ?? 8000) });
-  return Response.json(result, { headers });
+  const fetchSite = request.headers.get("sec-fetch-site");
+  if (fetchSite === "cross-site") {
+    return json(
+      { error: "FORBIDDEN", message: "Cross-site AI review requests are not accepted." },
+      { status: 403 },
+    );
+  }
+  const mediaType = request.headers.get("content-type")?.split(";", 1)[0]?.trim().toLowerCase();
+  if (mediaType !== "application/json") {
+    return json(
+      { error: "EXPECTED_JSON", message: "Request content type must be application/json." },
+      { status: 415 },
+    );
+  }
+  if (deploymentRateLimiter.isLimited()) {
+    return json(
+      { error: "RATE_LIMITED", message: "Try the deterministic result and retry later." },
+      { status: 429, headers: { "Retry-After": "60" } },
+    );
+  }
+  if (activeReviews >= MAX_CONCURRENT_REVIEWS) {
+    return json(
+      { error: "BUSY", message: "The bounded critic is at capacity." },
+      { status: 503, headers: { "Retry-After": "2" } },
+    );
+  }
+
+  let payload: unknown;
+  try {
+    payload = await readBoundedJson(request);
+  } catch (error) {
+    if (error instanceof PayloadTooLargeError) {
+      return json(
+        { error: "PAYLOAD_TOO_LARGE", message: `Request body is limited to ${MAX_BODY_BYTES} bytes.` },
+        { status: 413 },
+      );
+    }
+    return json(
+      { error: "INVALID_JSON", message: "Request body must be valid JSON." },
+      { status: 400 },
+    );
+  }
+
+  const parsed = criticApiRequestSchema.safeParse(payload);
+  if (!parsed.success) {
+    return json(
+      {
+        error: "INVALID_REQUEST",
+        message: "Only employeeId, language, candidateIds and bounded completion IDs are accepted.",
+        issues: parsed.error.issues.map((issue) => ({
+          path: issue.path.join("."),
+          message: issue.message,
+        })),
+      },
+      { status: 400 },
+    );
+  }
+
+  activeReviews += 1;
+  try {
+    const dataset = await getBundledDataset();
+    if (!dataset.employeesById[parsed.data.employeeId]) {
+      return json(
+        { error: "UNKNOWN_EMPLOYEE", message: "Employee is not present in the active server dataset." },
+        { status: 404 },
+      );
+    }
+    let effectiveDataset = dataset;
+    try {
+      parsed.data.completedActivityIds.forEach((activityId, index) => {
+        effectiveDataset = applyActivityCompletion(
+          effectiveDataset,
+          parsed.data.employeeId,
+          activityId,
+          `api-replay:${parsed.data.employeeId}:${String(index).padStart(3, "0")}:${activityId}`,
+        ).dataset;
+      });
+    } catch {
+      return json(
+        {
+          error: "INVALID_PROGRESS",
+          message: "Local completions must form a valid eligible sequence on the server dataset.",
+        },
+        { status: 409 },
+      );
+    }
+    const engineResult = recommendForEmployee(effectiveDataset, parsed.data.employeeId, 3);
+    const recommendationById = new Map(
+      engineResult.recommendations.map((recommendation) => [recommendation.activityId, recommendation]),
+    );
+    const selected = parsed.data.candidateIds.map((candidateId) =>
+      recommendationById.get(candidateId),
+    );
+    if (selected.some((recommendation) => !recommendation)) {
+      return json(
+        {
+          error: "CANDIDATE_NOT_ALLOWED",
+          message: "Candidate IDs must belong to the current deterministic engine shortlist.",
+        },
+        { status: 409 },
+      );
+    }
+
+    const criticRequest = buildCriticRequest(
+      selected.filter((recommendation) => recommendation !== undefined),
+      parsed.data.language,
+    );
+    const result = await runBoundedCritic(criticRequest, {
+      apiKey: optionalEnvironmentValue(process.env.LLM_API_KEY),
+      endpoint: optionalEnvironmentValue(process.env.LLM_BASE_URL),
+      model: optionalEnvironmentValue(process.env.LLM_MODEL),
+      timeoutMs: configuredTimeout(process.env.LLM_TIMEOUT_MS),
+    });
+
+    return json(result, {
+      status: 200,
+      headers: NO_STORE_HEADERS,
+    });
+  } finally {
+    activeReviews -= 1;
+  }
 }

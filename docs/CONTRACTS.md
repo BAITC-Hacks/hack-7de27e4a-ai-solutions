@@ -11,8 +11,8 @@
 |---|---|---|
 | Dataset-типы, `NormalizedDataset`, `ValidationIssue` | `src/lib/contracts/dataset.ts` | ✅ есть |
 | Recommendation, Evidence, FactorScores | `src/lib/contracts/recommendation.ts` | ✅ есть |
-| Simulation, Ledger, Planner | — | ⬜ пишет **B**, типы согласовать до 00:20 |
-| AIReview, Verifier, Trust-метрики | — | ⬜ пишет **C**, типы согласовать до 00:20 |
+| Simulation, Ledger, Planner | `src/domain/simulation`, `src/state/progress-ledger.ts` | ✅ есть |
+| AIReview, Verifier, Trust-метрики | `src/lib/evaluation`, `src/state/ai-review.ts` | ✅ есть |
 
 Импорт всегда через алиас: `import type { ... } from "@/lib/contracts";`
 
@@ -127,12 +127,12 @@ interface PathStep { activityId: string; simulation: SimulationResult; }
 interface CareerPath { strategy: "fastest" | "balanced" | "stretch"; steps: PathStep[]; readinessAfter: number; }
 ```
 
-**C — AI review** (предложение, правит владелец):
+**C — AI review** (реализованный bounded contract):
 
 ```ts
 interface AIReview {
   selectedCandidateIds: string[];
-  reasons: { candidateId: string; evidenceIds: string[]; explanation: string }[];
+  reasons: { candidateId: string; evidenceIds: string[] }[]; // model output: IDs only
 }
 type VerifierStatus = "verified" | "blocked" | "timeout" | "no_key";
 interface AIExplanationResult {
@@ -142,19 +142,28 @@ interface AIExplanationResult {
   blockedReasons?: string[];
   latencyMs?: number;
 }
+
+// Browser -> server. Evidence text с клиента не принимается.
+interface AIReviewRequest {
+  employeeId: string;
+  language: "kk" | "ru" | "en";
+  candidateIds: string[];       // 1..3 из текущего deterministic shortlist
+  completedActivityIds: string[]; // 0..32; сервер повторно проверяет eligibility/order
+}
 ```
 
 ## 4. Правила, которые нельзя нарушать
 
 1. **UI не копирует бизнес-логику.** Компоненты берут числа из `evidence` и
    `SimulationResult`, а не считают их сами. Дублирование скоринга во фронте = P0-дефект.
-2. **Один `NormalizedDataset` на приложение.** Employee, HR и Trust читают один store.
-   Вторая копия датасета «для HR» — P0-дефект.
+2. **Один активный `NormalizedDataset` на route-scope.** Demo, HR и Trust читают общий store;
+   Employee использует server-minimized private view и не сериализует чужую историю.
 3. **Симуляция не мутирует загруженные объекты.** Только новое состояние + ledger.
 4. **Уровни всегда `0..5`, факторы всегда `0..1`.**
 5. **Никаких hardcoded `E0028` / `EV_006`** в продуктовом коде — только в тестах и в отдельном
    демо-фикстуре.
-6. **В LLM уходит только evidence-allowlist.** Raw-профиль и история — никогда.
+6. **В LLM уходит только server-reconstructed evidence-allowlist.** Браузер передаёт route
+   только employee/candidate IDs; raw-профиль, история и client-authored facts — никогда.
 7. **Один adapter между UI и ядром.** B вызывает A через единственный `intelligenceAdapter`,
    чтобы моки снимались одной правкой на интеграции в 02:20.
 

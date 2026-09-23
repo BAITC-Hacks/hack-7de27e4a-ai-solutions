@@ -1,0 +1,218 @@
+.profileAccess {
+  display: grid;
+  gap: 5px;
+}
+
+.profileAccess > label,
+.demoProfilePicker > label {
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.profileAccess > div {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+}
+
+.currentProfile {
+  display: grid;
+  min-width: 0;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  border-left: 1px solid var(--line);
+  padding-left: 18px;
+}
+
+.currentProfile span,
+.currentProfile strong {
+  display: block;
+}
+
+.currentProfile span {
+  color: var(--muted);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.currentProfile strong {
+  overflow: hidden;
+  margin-top: 4px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.demoTools {
+  width: min(1320px, 100%);
+  margin: 18px auto 0;
+  padding: 22px;
+}
+
+.accessGate {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  width: min(760px, 100%);
+  margin: 64px auto 0;
+  padding: 28px;
+}
+
+.accessGate > span {
+  display: grid;
+  width: 56px;
+  height: 56px;
+  flex: 0 0 auto;
+  place-items: center;
+  border-radius: 18px;
+  background: var(--primary);
+  color: var(--lime);
+  font-size: 24px;
+}
+
+.accessGate h1 {
+  margin: 0;
+  font-size: 26px;
+}
+
+.accessGate p:last-child {
+  margin: 7px 0 0;
+  color: var(--muted);
+}
+
+.demoHeading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 18px;
+}
+
+.demoHeading h2 {
+  margin: 0;
+  font-size: 20px;
+}
+
+.demoHeading p:last-child {
+  max-width: 720px;
+  margin: 6px 0 0;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.demoGrid {
+  display: grid;
+  grid-template-columns: minmax(260px, 0.8fr) minmax(480px, 1.2fr);
+  gap: 20px;
+  margin-top: 18px;
+}
+
+.demoProfilePicker {
+  display: grid;
+  align-content: start;
+  gap: 8px;
+  border-radius: 16px;
+  background: var(--canvas);
+  padding: 15px;
+}
+
+.importForm {
+  display: grid;
+  gap: 12px;
+}
+
+.importFiles {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.fileField {
+  display: grid;
+  min-width: 0;
+  gap: 7px;
+  border: 1px dashed #bad0c4;
+  border-radius: 14px;
+  background: #f7faf8;
+  padding: 11px;
+  color: var(--primary);
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.fileField input {
+  min-width: 0;
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 500;
+}
+
+.importStatus {
+  min-height: 20px;
+  color: #2e6a52;
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.importStatus strong {
+  color: var(--danger);
+}
+
+.importStatus ul {
+  margin: 7px 0 0;
+  padding-left: 18px;
+  color: var(--danger);
+}
+
+.aiReview {
+  display: grid;
+  gap: 5px;
+  margin-top: 10px;
+  border: 1px solid #cfe3d8;
+  border-radius: 12px;
+  background: #f4faf6;
+  padding: 10px;
+}
+
+.aiReview[data-status="blocked"],
+.aiReview[data-status="timeout"],
+.aiReview[data-status="no_key"],
+.aiReview[data-status="fallback"] {
+  border-color: #eadcae;
+  background: #fffaf0;
+}
+
+.aiReview small {
+  color: var(--muted);
+}
+
+.evidenceListScrollable {
+  max-height: 360px;
+  overflow: auto;
+  padding-right: 4px;
+  scrollbar-color: #b8c9c0 transparent;
+  scrollbar-width: thin;
+}
+
+@media (max-width: 900px) {
+  .demoGrid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 640px) {
+  .profileAccess > div,
+  .importFiles {
+    grid-template-columns: 1fr;
+  }
+
+  .demoHeading {
+    align-items: stretch;
+    flex-direction: column;
+  }
+}

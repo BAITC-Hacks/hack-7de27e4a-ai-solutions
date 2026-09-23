@@ -1,24 +1,21 @@
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
-import { AppProviders } from "./AppProviders";
-import { cookies } from "next/headers";
-import { isLocale, LANGUAGE_STORAGE_KEY } from "@/lib/i18n/core";
+import { AppNavigation } from "@/components/app-navigation";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Career Quest",
-  description: "Explainable AI career navigation",
+  title: "Career Quest · AI Career Navigator",
+  description: "Explainable career navigation powered by evidence, not guesswork",
 };
 
-export default async function RootLayout({
+export default function RootLayout({
   children,
 }: Readonly<{ children: ReactNode }>) {
-  const savedLocale = (await cookies()).get(LANGUAGE_STORAGE_KEY)?.value;
-  const locale = isLocale(savedLocale) ? savedLocale : "ru";
   return (
-    <html lang={locale} data-scroll-behavior="smooth">
+    <html lang="ru" data-scroll-behavior="smooth">
       <body>
-        <AppProviders initialLocale={locale}>{children}</AppProviders>
+        <AppNavigation />
+        {children}
       </body>
     </html>
   );

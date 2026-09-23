@@ -10,7 +10,7 @@ import type {
   ScoredCandidate,
 } from "@/lib/contracts";
 
-import { analyzeGaps } from "./profile";
+import { analyzeGaps, applyEventEffects } from "./profile";
 
 export const SCORE_WEIGHTS = {
   targetGapImpact: 0.45,
@@ -175,12 +175,7 @@ function projectedSkills(
   profile: EffectiveEmployeeProfile,
   event: DevelopmentEvent,
 ): Record<string, ProficiencyLevel> {
-  const next = { ...profile.effectiveSkills };
-  event.developsSkills.forEach((effect) => {
-    const current = next[effect.skillId] ?? 0;
-    next[effect.skillId] = Math.min(current + effect.gain, effect.maxLevel, 5) as ProficiencyLevel;
-  });
-  return next;
+  return applyEventEffects(profile.effectiveSkills, event).skills;
 }
 
 export function scoreCandidate(
