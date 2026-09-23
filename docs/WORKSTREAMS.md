@@ -4,6 +4,12 @@
 > результат, ownership и запрет на несогласованные изменения.
 > Перед вставкой дополнить актуальным commit SHA.
 
+> **Статус 2026-09-23:** ниже сохранены исходные задания потоков. Текущая интеграция
+> определена решением 18 и `docs/INTEGRATION.md`: RU/KK/EN UI, AppProviders/sharedEmployeeStore,
+> in-memory ledger, `/` и `/demo` → `/employee`. UI вызывает bounded-evidence
+> `/api/ai/explain` на языке общего переключателя; IDs-only `/api/ai/review` сохранён
+> отдельным модулем. Указания ниже про endpoint и `preferred_language` относятся к раннему плану.
+
 ## 0. Универсальный префикс (в каждую задачу)
 
 ```
@@ -104,14 +110,15 @@ critical gaps, recommendation coverage, сотрудников без следу
 self-vs-assigned engagement (assigned_by: hr 1381 / self 865 / manager 497), activity impact
 и навыки без достаточного каталога. Публичных рейтингов сотрудников нет — это прямой запрет ТЗ.
 Каждый блок HR содержит operational action, а не только график. Создай weakest-skill baseline
-и evaluation harness. Реализуй bounded LLM critic через server route: allowlisted
-candidate/evidence IDs, Zod-выход, verifier, timeout, защита от prompt injection и
+и evaluation harness. Реализуй bounded LLM critic через server route: browser передаёт только
+employee/candidate IDs, server восстанавливает evidence, модель возвращает allowlisted IDs,
+Zod-выход, verifier, timeout, защита от prompt injection и
 детерминированный fallback на ru/kk/en по preferred_language. Trust Center показывает
-eligibility violations, factual grounding, history replay correctness, latency p50/p95 и
+eligibility violations, Evidence Receipt completeness, history replay correctness, latency p50/p95 и
 статус fallback. Добавь минимум 7 тестов, включая injection и LLM outage.
 Не меняй scoring и Employee UI.
 Definition of Done: обе поверхности читают единый store; outage не влияет на ranking;
-неизвестный ID или изменённое число блокируются; E0028 виден в baseline comparison.
+неизвестный ID или model-authored prose блокируются; E0028 виден в baseline comparison.
 ```
 
 **Code review C:**

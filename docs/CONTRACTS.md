@@ -5,14 +5,21 @@
 > изобрели несовместимые типы. **Контракты заморожены после 00:20.** Любое изменение —
 > сначала сообщение в командный чат и запись в `docs/DECISIONS.md`, только потом commit.
 
+> **Актуально на 2026-09-23 (решение 18):** активные Employee/HR/Trust используют
+> `sharedEmployeeStore` и in-memory ledger. Текущий UI вызывает `/api/ai/explain`:
+> `ReviewRequest` из `src/lib/evaluation/ai-contracts.ts` содержит `language` и
+> `candidates` с ID и структурированными числовыми facts. Описанный ниже `AIReviewRequest`
+> относится только к сохранённому `/api/ai/review` и не взаимозаменяем с ним.
+> IndexedDB/private projection не подключены к активным страницам. См. `INTEGRATION.md`.
+
 ## 0. Статус на момент написания
 
 | Блок | Файл | Статус |
 |---|---|---|
 | Dataset-типы, `NormalizedDataset`, `ValidationIssue` | `src/lib/contracts/dataset.ts` | ✅ есть |
 | Recommendation, Evidence, FactorScores | `src/lib/contracts/recommendation.ts` | ✅ есть |
-| Simulation, Ledger, Planner | — | ⬜ пишет **B**, типы согласовать до 00:20 |
-| AIReview, Verifier, Trust-метрики | — | ⬜ пишет **C**, типы согласовать до 00:20 |
+| Simulation, Ledger, Planner | `src/domain/simulation`, `src/state/progress-ledger.ts` | ✅ есть |
+| AIReview, Verifier, Trust-метрики | `src/lib/evaluation`, `src/state/ai-review.ts` | ✅ есть |
 
 Импорт всегда через алиас: `import type { ... } from "@/lib/contracts";`
 
@@ -108,9 +115,10 @@ type IneligibilityReason =
 
 `excluded[]` — не мусор, а продукт: именно из него делается кнопка «Почему не альтернатива?».
 
-## 3. Чего ещё нет — согласовать до 00:20
+## 3. Контракты B и C
 
-**B — simulation / ledger** (предложение, правит владелец):
+**B — simulation / ledger** (ранний эскиз; актуальные типы — в `src/state/intelligenceAdapter.ts`
+и `src/domain/simulation`, ledger активного UI — в `employeeStore.ts`):
 
 ```ts
 interface LedgerEvent {
@@ -127,12 +135,12 @@ interface PathStep { activityId: string; simulation: SimulationResult; }
 interface CareerPath { strategy: "fastest" | "balanced" | "stretch"; steps: PathStep[]; readinessAfter: number; }
 ```
 
-**C — AI review** (предложение, правит владелец):
+**C — AI review** (сохранённый IDs-only `/api/ai/review`):
 
 ```ts
 interface AIReview {
   selectedCandidateIds: string[];
-  reasons: { candidateId: string; evidenceIds: string[]; explanation: string }[];
+  reasons: { candidateId: string; evidenceIds: string[] }[]; // model output: IDs only
 }
 type VerifierStatus = "verified" | "blocked" | "timeout" | "no_key";
 interface AIExplanationResult {
@@ -142,19 +150,29 @@ interface AIExplanationResult {
   blockedReasons?: string[];
   latencyMs?: number;
 }
+
+// Browser -> server. Evidence text с клиента не принимается.
+interface AIReviewRequest {
+  employeeId: string;
+  language: "kk" | "ru" | "en";
+  candidateIds: string[];       // 1..3 из текущего deterministic shortlist
+  completedActivityIds: string[]; // 0..32; сервер повторно проверяет eligibility/order
+}
 ```
 
 ## 4. Правила, которые нельзя нарушать
 
 1. **UI не копирует бизнес-логику.** Компоненты берут числа из `evidence` и
    `SimulationResult`, а не считают их сами. Дублирование скоринга во фронте = P0-дефект.
-2. **Один `NormalizedDataset` на приложение.** Employee, HR и Trust читают один store.
-   Вторая копия датасета «для HR» — P0-дефект.
+2. **Один активный `NormalizedDataset` в общей сессии.** Employee, HR и Trust читают
+   `sharedEmployeeStore` под AppProviders; `/` и `/demo` ведут на `/employee`.
 3. **Симуляция не мутирует загруженные объекты.** Только новое состояние + ledger.
 4. **Уровни всегда `0..5`, факторы всегда `0..1`.**
 5. **Никаких hardcoded `E0028` / `EV_006`** в продуктовом коде — только в тестах и в отдельном
    демо-фикстуре.
-6. **В LLM уходит только evidence-allowlist.** Raw-профиль и история — никогда.
+6. **В LLM уходит только ограниченный evidence-allowlist.** `/api/ai/review` восстанавливает
+   его сервером по ID; `/api/ai/explain` проверяет структурированные числовые facts от UI.
+   Raw-профиль, полная история и произвольные описания не передаются.
 7. **Один adapter между UI и ядром.** B вызывает A через единственный `intelligenceAdapter`,
    чтобы моки снимались одной правкой на интеграции в 02:20.
 

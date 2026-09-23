@@ -6,3 +6,4 @@ export default function TrustPage() {
   const integration = useTrustIntegration();
   return <Surface active="trust"><IntegrationGate>{integration && <TrustDashboard integration={integration} />}</IntegrationGate></Surface>;
 }
+

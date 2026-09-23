@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useRef, type ReactNode } from "react";
+import { useI18n } from "@/lib/i18n/I18nProvider";
 import styles from "./employee.module.css";
 export function Modal({
   title,
@@ -12,6 +13,7 @@ export function Modal({
   children: ReactNode;
   drawer?: boolean;
 }) {
+  const { t } = useI18n();
   const ref = useRef<HTMLDialogElement>(null);
   useEffect(() => {
     const dialog = ref.current;
@@ -36,15 +38,30 @@ export function Modal({
       }}
     >
       <div className={styles.dialogContent}>
-        <div className={styles.sectionHeading}>
-          <h2>{title}</h2>
+        <div className={styles.dialogHeading}>
+          <div>
+            <h2>{title}</h2>
+          </div>
           <button
             autoFocus
             className={styles.closeButton}
             onClick={onClose}
-            aria-label="Закрыть"
+            aria-label={t("Закрыть", "Жабу", "Close")}
           >
-            ×
+            <svg
+              width="20"
+              height="20"
+              viewBox="0 0 24 24"
+              fill="none"
+              aria-hidden="true"
+            >
+              <path
+                d="m6 6 12 12M18 6 6 18"
+                stroke="currentColor"
+                strokeWidth="1.8"
+                strokeLinecap="round"
+              />
+            </svg>
           </button>
         </div>
         {children}

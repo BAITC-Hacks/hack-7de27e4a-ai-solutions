@@ -13,30 +13,34 @@ Middle Backend Engineer, цель не задана → target = **Backend Engin
 
 | # | Экран | Реплика | Что должно быть видно |
 |---|---|---|---|
-| 1 | Импорт | «Загружаем четыре файла стартового набора: 200 сотрудников, 60 навыков, 40 активностей, 2743 записи истории. Тот же импорт принимает профили жюри.» | validation summary без ошибок |
-| 2 | Профиль | «E0028, Middle Backend Engineer. Цель не задана — система честно берёт следующий грейд.» | current/target grade, readiness ring |
-| 3 | Replay badge | «Последняя аттестация — 24 июня. После неё человек прошёл три активности, и они ещё не отражены в его уровнях. Мы их доигрываем: System Design поднимается с 2 до 3.» | badge «история пересчитана», 3 записи |
-| 4 | Decision Lab | «Наивный baseline берёт самый низкий навык — Data Viz или Cloud. Data Viz вообще не входит в требования Senior Backend: он не ведёт к повышению.» | левая колонка baseline |
-| 5 | Decision Lab | «Career Quest выбирает другое: System Design — критичный навык, без него повышения не будет, и до требования остался один шаг.» | правая колонка, top-1 выделен |
-| 6 | Evidence | «Каждое число кликабельно: разрыв, ожидаемый прирост, история участия, вклад каждого фактора. Объяснение опирается минимум на три фактора.» | Evidence drawer |
-| 7 | Почему не альтернатива | «EV_006 закрыл бы разрыв идеально — но он уже пройден 8 сентября. Система это знает и не предлагает его повторно.» | список excluded с причиной |
-| 8 | What-if | «Смотрим эффект до выполнения: readiness с X% до Y%.» | before/after |
-| 9 | Confirm | «Подтверждаем — навык растёт строго по gain и max_level, траектория и top-3 пересчитываются.» | ledger + новый top-3 |
-| 10 | HR | «HR видит не рейтинг людей, а где просаживаются компетенции и кто остался без следующего шага.» | heatmap + no-step |
-| 11 | Trust | «И главное: baseline против движка, ноль нарушений eligibility, 100% числовых утверждений подтверждены, latency, и полная работоспособность без ключа LLM.» | Trust Center |
+| 1 | `/demo` → «Демо и импорт» | «Четыре файла проходят Zod/CSV и relation validation. Тот же адаптер принимает профили жюри.» | 4 file inputs, dataset source, import status |
+| 2 | Demo profile `E0028` | «Middle Backend Engineer, цели нет — система честно берёт Senior той же роли.» | current/target, readiness 74%, полный skill/history profile |
+| 3 | Карта навыков | «После review было три completion; replay даёт шесть skill changes. System Design уже 3, а не устаревшие 2.» | строка `System Design 3 / нужно 4`, replay count |
+| 4 | Counterfactual | «Weakest-skill подход ушёл бы в API Testing/Data Viz, которых нет в требованиях цели. Career Quest оптимизирует карьерный разрыв.» | «Почему не самый слабый навык?» |
+| 5 | Top-3 | «Ranking учитывает цель, gap, историю, формат и diversity. Уже завершённый `EV_006` отфильтрован до score.» | top-1 и две альтернативы |
+| 6 | Evidence Receipt | «Все evidence-факты, score contributions, источники и версия engine доступны, а не спрятаны в логах.» | полный scrollable Evidence Receipt |
+| 7 | Bounded AI | «Браузер отправляет только employee/candidate/completion IDs. Сервер проверяет replay и восстанавливает evidence, модель возвращает ID/citations, а текст строится из подтверждённых фактов.» | кнопка AI-критика, safe fallback status |
+| 8 | What-if | «Digital Twin показывает before/after до изменения профиля.» | readiness и skill changes |
+| 9 | Confirm | «Completion применяет gain/max_level, сохраняется в IndexedDB и мгновенно перестраивает top-рекомендации и beam path.» | toast, новый readiness/top-3; reload сохраняет результат |
+| 10 | `/hr` | «HR видит агрегаты и no-step queue, но не performance leaderboard и не зарплатные решения.» | coverage 91%, gaps, participation, 27 no-step |
+| 11 | `/trust` | «На текущем dataset: 0 eligibility violations, 100% полнота receipt, 100% deterministic rerun, p50/p95 latency и verifier policy.» | 4/4 gates, latency card, fallback mode |
 
 ## Правила демонстрации
 
-- Ничего не открывать заранее «чтобы прогрузилось» — сценарий должен выдерживать холодный старт.
+- Для чистого повтора использовать профиль, на котором ещё не сохраняли completion, либо очистить
+  demo-origin через штатную очистку браузерных данных до выступления.
 - Если LLM отвалилась — **это часть демо, а не провал**: показать fallback как фичу.
+- После browser-import внешний critic намеренно остаётся в fallback: сервер не смешивает
+  импортированные факты с bundled dataset без доказуемой provenance.
 - Не произносить слов «точность» и «accuracy» — у нас нет размеченного эталона.
+- Не называть configured viewer production RBAC: это role-scoped hackathon demo.
 
-## Артефакты до 04:35
+## Release checklist
 
-- [ ] `README.md` со скриншотами
-- [ ] hero GIF Decision Lab (`public/demo/`)
-- [ ] `.env.example` без секретов
-- [ ] Dockerfile и одна команда запуска
-- [ ] demo fixture и challenge fixture
-- [ ] сохранённый evaluation summary
-- [ ] видео/GIF, открывающееся без авторизации
+- [x] README соответствует реализованным routes и ограничениям
+- [x] `.env.example` без секретов; no-key fallback проверен
+- [x] Dockerfile и `docker compose up --build`
+- [x] Исходный dataset и judge-import adapter
+- [x] Сохранённый evaluation summary: `docs/EVALUATION.md`
+- [x] Employee → What-if → completion → rerank → HR/Trust browser regression
+- [ ] Записать финальный короткий GIF/видео на машине команды, если останется время

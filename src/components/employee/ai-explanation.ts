@@ -63,16 +63,48 @@ export const explanationStatusLabels: Record<
   blocked: "Резервный режим · расчёт движка",
 };
 
+export function explanationStatusLabel(
+  status: EmployeeExplanationStatus,
+  language: Language,
+): string {
+  const translated: Record<
+    Language,
+    Record<EmployeeExplanationStatus, string>
+  > = {
+    ru: explanationStatusLabels,
+    kk: {
+      deterministic: "Есептеу нәтижесі",
+      loading: "AI · түсіндірме тексерілуде",
+      verified: "AI · деректер тексерілді",
+      no_key: "Жергілікті түсіндірме · AI-сыз",
+      timeout: "AI жауап бермеді · есептеу нәтижесі",
+      blocked: "Резервтік режим · есептеу нәтижесі",
+    },
+    en: {
+      deterministic: "Engine calculation",
+      loading: "AI · checking explanation",
+      verified: "AI · facts verified",
+      no_key: "Local explanation · without AI",
+      timeout: "AI timed out · engine calculation",
+      blocked: "Fallback · engine calculation",
+    },
+  };
+  return translated[language][status];
+}
+
 /** Results are matched by stable candidate ID; model output never changes the ranking. */
 export function recommendationExplanation(
   recommendation: Recommendation,
   result: AIExplanationResult | null,
+  fallback = recommendation.deterministicExplanation,
+  language?: Language,
 ): string {
   return (
-    (result?.status === "verified"
+    (result?.status === "verified" &&
+    (!language || result.language === language)
       ? result.reasons.find(
           (reason) => reason.candidateId === recommendation.activityId,
         )?.explanation
-      : null) ?? recommendation.deterministicExplanation
+      : null) ?? fallback
   );
 }

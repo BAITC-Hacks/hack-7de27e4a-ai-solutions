@@ -12,7 +12,7 @@ export async function requestAIExplanation(request: ReviewRequest, fetcher: type
   };
   try {
     if (!request.candidates.length) return { ...fallback(), status: 'verified', blockedReasons: undefined };
-    const response = await fetcher('/api/ai/review', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(request), signal: controller.signal });
+    const response = await fetcher('/api/ai/explain', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(request), signal: controller.signal });
     if (!response.ok) return fallback();
     const data = await response.json() as AIExplanationResult;
     if (!['verified', 'blocked', 'timeout', 'no_key'].includes(data.status) || data.language !== request.language) return fallback();

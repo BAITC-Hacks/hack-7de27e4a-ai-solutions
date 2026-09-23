@@ -9,15 +9,17 @@ AI-навигатор развития сотрудника: по профилю
 > HackAlem AI · трек Halyk Bank · кейс **Career Quest**
 > Команда: Алихан (Intelligence), Манахнбет (Experience), Даник (Trust)
 
-Employee, HR и Trust подключены к одной сессии приложения. Главный адрес открывает кабинет сотрудника.
+Employee, HR и Trust подключены к одной сессии приложения. Адреса `/` и `/demo`
+перенаправляют в кабинет сотрудника `/employee`.
 
 ## Почему наше решение другое
 
-|                     |                                                                                                                                                                                 |
-| ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Decision Engine** | Многофакторный детерминированный выбор: разрыв по навыкам с приоритетом критичных, история участия, выполнимость, цель, разнообразие. Не один prompt и не «самый низкий навык». |
-| **Digital Twin**    | Карьерный эффект виден **до** выполнения активности: what-if по уровням и readiness, план на несколько шагов, подтверждение с пересчётом.                                       |
-| **Trust Center**    | У каждого решения есть Evidence Receipt. Баг-репорт на сам AI: нарушения eligibility, подтверждённость чисел, корректность пересчёта истории, latency, поведение без LLM.       |
+|                             |                                                                                                                                                                                 |
+| --------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Decision Engine**         | Многофакторный детерминированный выбор: разрыв по навыкам с приоритетом критичных, история участия, выполнимость, цель, разнообразие. Не один prompt и не «самый низкий навык». |
+| **Digital Twin**            | Карьерный эффект виден **до** выполнения активности: what-if по уровням и readiness, план на несколько шагов, подтверждение с пересчётом.                                       |
+| **Trust Center**            | У каждого решения есть Evidence Receipt. Баг-репорт на сам AI: нарушения eligibility, подтверждённость чисел, корректность пересчёта истории, latency, поведение без LLM.       |
+| **External Learning Layer** | Отдельный офлайновый каталог проверенных внешних курсов для разрывов без внутренней активности — без выдуманного gain и без влияния на top-3/readiness.                        |
 
 ## Быстрый старт
 
@@ -26,11 +28,21 @@ pnpm install --frozen-lockfile
 pnpm dev
 ```
 
-Открыть http://localhost:3000 и загрузить четыре файла из `data/source/`.
-В общей навигации доступны «Моя траектория», «HR-аналитика» и «AI Trust Center».
-Для аналитики переключить «Режим демо» на HR в верхней панели. Это демонстрация
-видимости экранов, а не аутентификация или защита реальных персональных данных.
+Открыть http://localhost:3000 и нажать **«Посмотреть демо»** для загрузки набора организаторов
+или выбрать четыре файла из `data/source/`.
+В общей навигации доступны «Моя траектория», «HR-аналитика» и «Проверка решений».
+Две кнопки **«Сотрудник» / «HR»** в верхней панели переключают режим и открывают
+соответствующий кабинет. При входе в HR-аналитику или «Проверку решений» из режима
+сотрудника кнопка **«Перейти в режим HR»** переключает режим на текущей странице.
+Если данные ещё не загружены, доступна кнопка **«Перейти к загрузке»**.
 Переходы сохраняют импорт, выбранный профиль и завершения текущей вкладки.
+Режимы демонстрируют видимость экранов; они не заменяют аутентификацию и защиту
+реальных персональных данных.
+
+Общий переключатель **«Язык»** в верхней панели меняет интерфейс, форматы чисел и дат
+и язык AI-объяснений: **Қазақша (`kk`) / Русский (`ru`) / English (`en`)**.
+Выбор сохраняется в браузере и восстанавливается после перезагрузки. Язык интерфейса
+не зависит от `preferred_language` выбранного сотрудника: смена профиля его не меняет.
 
 Docker:
 
@@ -56,21 +68,48 @@ docker compose --env-file .env.local up --build
 не предлагается. Примерить и подтвердить Leadership Foundations: readiness 74% → 78%.
 Открыть HR: число добровольных завершений увеличится с 1044 до 1045. Открыть Trust и
 запустить проверки; затем вернуться к сотруднику — профиль и журнал сохранятся.
+Показать External Learning Layer: внешние курсы появляются только там, где нет подходящей
+внутренней активности, и не обещают числовой рост навыка.
 
 Полный скрипт: [`docs/DEMO.md`](docs/DEMO.md).
 
 ## Архитектура
 
-Next.js + TypeScript, вся обработка данных — в браузере; в server route уходят только
-минимальные evidence-факты по top-кандидатам.
+Next.js + TypeScript. Согласованный интерфейс на RU/KK/EN использует
+`AppProviders` и один `sharedEmployeeStore`: импорт, выбранный профиль и журнал
+подтверждений находятся в памяти вкладки. Employee, HR и Trust читают эту общую сессию.
 
 ```
 Import (Zod) -> NormalizedDataset -> history replay -> target gaps
    -> hard filters -> multi-factor ranking -> Evidence Receipt
         ├─> Employee Digital Twin (what-if, planner, ledger)
         ├─> HR Command Center (агрегаты, no-step alerts)
-        └─> AI Trust Center (baseline, evals, fallback)
+        ├─> AI Trust Center (baseline, evals, fallback)
+        └─> External Learning Layer (offline, read-only, outside scoring)
 ```
+
+Для объяснений текущий UI обращается к `/api/ai/explain`: передаёт язык интерфейса
+и ограниченные числовые evidence-факты по кандидатам, включая импортированные наборы.
+Сохранённый `/api/ai/review` принимает только ID и восстанавливает evidence на сервере
+из встроенного набора. Контракты этих endpoints различаются.
+
+Из `main cf1dc89` сохранены новые доменные модули и API. Альтернативные
+`CareerQuestStore`, IndexedDB, private Employee projection и XP-модуль не подключены
+к активным страницам; текущий интерфейс не обещает эти возможности.
+
+### External Learning Layer
+
+`data/external_courses.json` — курируемый офлайновый каталог из 35 внешних курсов. При
+запуске нет запросов к API провайдеров: ссылки и skill IDs проверяются локальной строгой
+Zod-схемой, разрешены только HTTPS-домены из allowlist. Курс показывается отдельно и только
+когда ни одна внутренняя активность не закрывает конкретный разрыв сотрудника.
+
+Внешние курсы намеренно не входят в `NormalizedDataset`, recommendation ranking, top-3,
+readiness, what-if или completion ledger: у них нет подтверждённых компанией `gain` и
+`max_level`. Поэтому UI не показывает числовой эффект и честно маркирует источник. На
+текущем bundled snapshot движок вычисляет **88 сотрудников** с критичным hard-skill
+блокером без подходящей внутренней активности; HR-экран пересчитывает показатель для
+фактически загруженного набора данных, а не использует хардкод.
 
 Подробно: [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) · контракты:
 [`docs/CONTRACTS.md`](docs/CONTRACTS.md) · данные: [`docs/DATASET.md`](docs/DATASET.md).
@@ -100,12 +139,28 @@ prerequisites, уже пройденное (кроме recurring `EV_036`), ну
 
 ## Результаты проверки
 
-На объединённом A+B+C прошли **94 теста в 12 файлах**, TypeScript и production-сборка
-в локальной Windows-среде. Сборка включает `/employee`, `/hr`, `/trust`, `/api/ai/review`.
-Три браузерных цикла confirm → HR → Trust → Employee сохранили прогресс;
-добровольные завершения изменились 1044 → 1045 → 1046 → 1047.
-Trust на загруженном наборе выполнил 33 проверки без ошибок. Grounding относится
-к 5 проверочным утверждениям, а не к произвольным ответам модели.
+External Learning Layer поверх `main cf1dc89` прошёл **190 тестов в 23 файлах**,
+отдельный TypeScript typecheck, production build и Docker image build (2026-09-23).
+Browser smoke подтвердил активные `EmployeeWorkspace` и `HRDashboard`, RU/KK/EN,
+скрытие общеорганизационного external-агрегата при фильтре роли и отсутствие console errors.
+
+Предыдущая версия согласованного интерфейса прошла **117 тестов в 14 файлах**,
+TypeScript и production-сборку. Для PR #6 отдельно зафиксированы **152 теста в 19 файлах**,
+TypeScript, сборка и Docker smoke. Это исторические результаты двух версий,
+а не результаты проверки их объединения.
+
+Исторический browser QA согласованного UI: три цикла confirm → HR → Trust → Employee
+сохранили прогресс; добровольные завершения изменились 1044 → 1045 → 1046 → 1047.
+Trust выполнил 33 проверки без ошибок. Grounding относится к 5 проверочным утверждениям,
+а не к произвольным ответам модели. Текущий статус — в [`docs/INTEGRATION.md`](docs/INTEGRATION.md).
+
+Стандартные команды проверки из корня проекта:
+
+```bash
+pnpm test
+pnpm typecheck
+pnpm build
+```
 
 GitHub Actions заблокирован из-за billing аккаунта, до запуска команд проекта.
 По решению команды проверяем эту интеграцию локально. Детали команд и ограничений:
@@ -115,13 +170,18 @@ GitHub Actions заблокирован из-за billing аккаунта, до
 
 ## Приватность и отказоустойчивость
 
-- Данные не покидают браузер: без БД, без внешнего хранилища.
+- Исходные импортированные файлы и полная история остаются в браузере; серверной БД нет.
 - В LLM уходят только evidence-факты по top-кандидатам — **никогда** raw-профиль и история.
 - Ответ модели проходит Zod-схему и fact verifier: неизвестный ID, изменённое число или
   неподтверждённое утверждение блокируются.
 - Текст из датасета трактуется как данные, а не как инструкции (защита от prompt injection).
 - Без ключа или при ошибке модели — полноценный детерминированный режим.
+- `/api/ai/explain` проверяет ответ относительно присланного evidence; происхождение
+  импортированных фактов сервером не подтверждается. `/api/ai/review` использует
+  серверный встроенный набор. Оба route ограничивают origin, JSON, размер тела и частоту запросов.
 - Режимы просмотра сотрудник / HR для демонстрации; публичных рейтингов сотрудников нет.
+- Названия внешних курсов трактуются как данные и не передаются в LLM; ссылки разрешены
+  только по HTTPS allowlist и открываются с `noopener noreferrer`.
 
 ## Ограничения
 
@@ -130,7 +190,8 @@ GitHub Actions заблокирован из-за billing аккаунта, до
 - Beam search ограничен шириной 10 и глубиной 4; календарная совместимость активностей не рассчитывается.
 - Живой платный LLM-провайдер не вызывался при проверке; протестированы проверенные ответы, отказ,
   таймаут и режим без ключа. AI не меняет порядок рекомендаций.
-- Docker-конфигурация есть; текущий локальный Docker daemon недоступен, контейнер здесь не запускался.
+- Docker image собран локально; отдельный HTTP smoke уже внутри запущенного контейнера в этом
+  прогоне не выполнялся — Employee и HR проверены на локальной production-сборке.
 
 ## Документация
 
@@ -150,3 +211,73 @@ GitHub Actions заблокирован из-за billing аккаунта, до
 
 Данные синтетические, предоставлены организаторами. Реальные персональные данные не
 используются.
+
+## PR #7 — integration verification (2026-09-23)
+
+Merged main `f287b40` into the Danik branch, preserving the localized main UI, adding the HR agent and participation panels, and retaining both analytics export sets. The new panels use RU/KK/EN. Shared contracts, recommendation, simulation, and Employee files match main.
+
+Standard commands on Windows (Node 24.21.0, pnpm 11.19.0): `pnpm install` exit 0; `pnpm typecheck` exit 0; `pnpm test` exit 1; `pnpm build` exit 1. The current environment denies piped child processes (`spawn EPERM`), also reproduced with official Node 22.23.2. No alternate test configuration or build configuration was used for these checks. **The standard test/build gates remain unverified; these failures are not successful reproducibility evidence.**
+
+CI now has a manual `workflow_dispatch` trigger, implementing the billing-related team decision already recorded in `docs/DECISIONS.md` (decision 8). GitHub reports previous jobs failing before runner startup (`runner_id=0`, `steps=[]`); logs are unavailable. Billing is documented by the team, but the current billing diagnostic could not independently be retrieved through the connector. Manual-only CI does not constitute a passing check.
+
+<details><summary>Actual pnpm test output</summary>
+
+```text
+$ vitest run
+failed to load config from C:\Users\Daniyar\Documents\Codex\2026-09-23\github-plugin-github-openai-curated-remote\work\pr7-integration\vitest.config.ts
+
+⎯⎯⎯⎯⎯⎯⎯ Startup Error ⎯⎯⎯⎯⎯⎯⎯⎯
+Error: Build failed with 1 error:
+
+[plugin externalize-deps]
+Error: spawn EPERM
+    at ChildProcess.spawn (node:internal/child_process:458:11)
+    at spawn (node:child_process:813:9)
+    at Object.execFile (node:child_process:349:17)
+    at exec (node:child_process:236:25)
+    at optimizeSafeRealPathSync (file:///C:/Users/Daniyar/Documents/Codex/2026-09-23/github-plugin-github-openai-curated-remote/work/pr7-integration/node_modules/.pnpm/vite@8.3.0_@types+node@26.6.2/node_modules/vite/dist/node/chunks/node.js:2438:2)
+    at windowsSafeRealPathSync (file:///C:/Users/Daniyar/Documents/Codex/2026-09-23/github-plugin-github-openai-curated-remote/work/pr7-integration/node_modules/.pnpm/vite@8.3.0_@types+node@26.6.2/node_modules/vite/dist/node/chunks/node.js:2424:3)
+    at getRealPath (file:///C:/Users/Daniyar/Documents/Codex/2026-09-23/github-plugin-github-openai-curated-remote/work/pr7-integration/node_modules/.pnpm/vite@8.3.0_@types+node@26.6.2/node_modules/vite/dist/node/chunks/node.js:28972:36)
+    at tryResolveRealFileOrType (file:///C:/Users/Daniyar/Documents/Codex/2026-09-23/github-plugin-github-openai-curated-remote/work/pr7-integration/node_modules/.pnpm/vite@8.3.0_@types+node@26.6.2/node_modules/vite/dist/node/chunks/node.js:28966:9)
+    at tryCleanFsResolve (file:///C:/Users/Daniyar/Documents/Codex/2026-09-23/github-plugin-github-openai-curated-remote/work/pr7-integration/node_modules/.pnpm/vite@8.3.0_@types+node@26.6.2/node_modules/vite/dist/node/chunks/node.js:28715:21)
+    at tryFsResolve (file:///C:/Users/Daniyar/Documents/Codex/2026-09-23/github-plugin-github-openai-curated-remote/work/pr7-integration/node_modules/.pnpm/vite@8.3.0_@types+node@26.6.2/node_modules/vite/dist/node/chunks/node.js:28708:14)
+    at aggregateBindingErrorsIntoJsError (file:///C:/Users/Daniyar/Documents/Codex/2026-09-23/github-plugin-github-openai-curated-remote/work/pr7-integration/node_modules/.pnpm/rolldown@1.2.9/node_modules/rolldown/dist/shared/error-CGhV1ebk.mjs:48:18)
+    at unwrapBindingResult (file:///C:/Users/Daniyar/Documents/Codex/2026-09-23/github-plugin-github-openai-curated-remote/work/pr7-integration/node_modules/.pnpm/rolldown@1.2.9/node_modules/rolldown/dist/shared/error-CGhV1ebk.mjs:18:128)
+    at #build (file:///C:/Users/Daniyar/Documents/Codex/2026-09-23/github-plugin-github-openai-curated-remote/work/pr7-integration/node_modules/.pnpm/rolldown@1.2.9/node_modules/rolldown/dist/shared/rolldown-Ld3ZGGCt.mjs:133:34)
+    at async bundleConfigFile (file:///C:/Users/Daniyar/Documents/Codex/2026-09-23/github-plugin-github-openai-curated-remote/work/pr7-integration/node_modules/.pnpm/vite@8.3.0_@types+node@26.6.2/node_modules/vite/dist/node/chunks/node.js:37448:12)
+    at async bundleAndLoadConfigFile (file:///C:/Users/Daniyar/Documents/Codex/2026-09-23/github-plugin-github-openai-curated-remote/work/pr7-integration/node_modules/.pnpm/vite@8.3.0_@types+node@26.6.2/node_modules/vite/dist/node/chunks/node.js:37344:18)
+    at async loadConfigFromFile (file:///C:/Users/Daniyar/Documents/Codex/2026-09-23/github-plugin-github-openai-curated-remote/work/pr7-integration/node_modules/.pnpm/vite@8.3.0_@types+node@26.6.2/node_modules/vite/dist/node/chunks/node.js:37305:42)
+    at async resolveConfig (file:///C:/Users/Daniyar/Documents/Codex/2026-09-23/github-plugin-github-openai-curated-remote/work/pr7-integration/node_modules/.pnpm/vite@8.3.0_@types+node@26.6.2/node_modules/vite/dist/node/chunks/node.js:36906:22)
+    at async resolveConfig$1 (file:///C:/Users/Daniyar/Documents/Codex/2026-09-23/github-plugin-github-openai-curated-remote/work/pr7-integration/node_modules/.pnpm/vitest@5.0.1_@types+node@26_7c4363941a84df12a3c6620a81dfa721/node_modules/vitest/dist/chunks/index.DzobfTyw.js:14777:25)
+    at async createVitest (file:///C:/Users/Daniyar/Documents/Codex/2026-09-23/github-plugin-github-openai-curated-remote/work/pr7-integration/node_modules/.pnpm/vitest@5.0.1_@types+node@26_7c4363941a84df12a3c6620a81dfa721/node_modules/vitest/dist/chunks/cli-api.DcLieX4F.js:26:17)
+    at async prepareVitest (file:///C:/Users/Daniyar/Documents/Codex/2026-09-23/github-plugin-github-openai-curated-remote/work/pr7-integration/node_modules/.pnpm/vitest@5.0.1_@types+node@26_7c4363941a84df12a3c6620a81dfa721/node_modules/vitest/dist/chunks/cli-api.DcLieX4F.js:421:14) {
+  errors: [Getter/Setter]
+}
+
+
+
+[ELIFECYCLE] Test failed. See above for more details.
+EXIT_CODE=1
+```
+
+</details>
+
+<details><summary>Actual pnpm build output</summary>
+
+```text
+$ next build
+▲ Next.js 16.3.5 (Turbopack)
+⚠ Warning: Next.js ignored package-lock.json in C:\Users\Daniyar\Documents\Codex\2026-09-23\github-plugin-github-openai-curated-remote\work because it is outside the current Git repository (C:\Users\Daniyar\Documents\Codex\2026-09-23\github-plugin-github-openai-curated-remote\work\pr7-integration).
+ To use this directory, set `turbopack.root` in your Next.js config.
+
+✓ Running next.config.ts took 52ms
+
+  Creating an optimized production build ...
+✓ Compiled successfully in 6.1s
+  Running TypeScript ...
+spawn EPERM
+[ELIFECYCLE] Command failed with exit code 1.
+EXIT_CODE=1
+```
+
+</details>
