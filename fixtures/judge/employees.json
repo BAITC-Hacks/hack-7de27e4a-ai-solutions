@@ -1,0 +1,37 @@
+﻿{
+  "meta": {
+    "dataset": "career_quest_judge",
+    "version": "1.0",
+    "as_of_date": "2026-10-01"
+  },
+  "employees": [
+    {
+      "employee_id": "J0002",
+      "full_name": "Judge No History",
+      "department": "Quality",
+      "role": "QA Engineer",
+      "grade": "Junior",
+      "manager_id": null,
+      "hire_date": "2026-04-01",
+      "tenure_months": 5,
+      "work_format": "remote",
+      "preferred_language": "kk",
+      "career_goal": null,
+      "skills": {
+        "SK_TEST_DESIGN": 2,
+        "SK_TEST_AUTOMATION": 1,
+        "SK_API_TESTING": 2,
+        "SK_LOAD_TESTING": 0,
+        "SK_JAVA": 1,
+        "SK_SQL": 1,
+        "SK_CICD": 0,
+        "SK_COMMUNICATION": 2,
+        "SK_TEAMWORK": 2,
+        "SK_CRITICAL_THINKING": 2,
+        "SK_WRITTEN_COMMUNICATION": 1,
+        "SK_MENTORING": 0
+      },
+      "last_review_date": "2026-06-01"
+    }
+  ]
+}
