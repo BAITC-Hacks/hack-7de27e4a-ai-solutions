@@ -5,10 +5,22 @@
 > Перед вставкой дополнить актуальным commit SHA.
 
 > **Статус 2026-09-23:** ниже сохранены исходные задания потоков. Текущая интеграция
-> определена решением 18 и `docs/INTEGRATION.md`: RU/KK/EN UI, AppProviders/sharedEmployeeStore,
-> in-memory ledger, `/` и `/demo` → `/employee`. UI вызывает bounded-evidence
-> `/api/ai/explain` на языке общего переключателя; IDs-only `/api/ai/review` сохранён
-> отдельным модулем. Указания ниже про endpoint и `preferred_language` относятся к раннему плану.
+> определена решениями 18–19 и `docs/INTEGRATION.md`: RU/KK/EN UI, signed demo identity,
+> AppProviders/sharedEmployeeStore, `/` и `/demo` → `/employee`, Skill Exchange на `/chat`.
+> Employee получает только свой профиль/историю; HR — bundled analytics и агрегаты чужого чата.
+> Demo/import ledger раздельны и живут в памяти; сообщения сохраняются в server JSON.
+> UI вызывает `/api/ai/explain` на языке общего переключателя; IDs-only `/api/ai/review`
+> доступен себе или HR. Demo persona не заменяет SSO. Указания ниже про endpoint,
+> `preferred_language` и ранние ограничения scope относятся к исходному плану.
+
+> PR #10/#11 из `main f287b406` добавляют внешнее обучение и judge import поверх
+> этой интеграции; они сохраняют согласованный UI, identity и Skill Exchange.
+> Новый общий gate отражается в `INTEGRATION.md`, прежние результаты исторические.
+
+> Последующее объединение с `main 0d068536` сохраняет новые economy/HR Agent/participation
+> модули. Запреты раннего плана на валюту уточнены принятой командой demo economy:
+> только добровольные действия, без публичного рейтинга и фактической выдачи наград.
+> HR Agent защищён signed HR identity. Приёмка: `REQUIREMENTS_AUDIT.md`.
 
 ## 0. Универсальный префикс (в каждую задачу)
 

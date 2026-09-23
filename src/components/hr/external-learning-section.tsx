@@ -2,7 +2,6 @@
 
 import type { HrExternalLearningPlan } from "@/domain/external";
 import { useI18n } from "@/lib/i18n/I18nProvider";
-import { localeNames } from "@/lib/i18n/core";
 import { catalogName } from "@/lib/i18n/domain";
 
 import styles from "./external-learning-section.module.css";
@@ -16,6 +15,11 @@ export function HrExternalLearningSection({
   plan,
 }: HrExternalLearningSectionProps) {
   const { locale, t, number } = useI18n();
+  const languageNames = {
+    ru: t("Русский", "Орыс тілі", "Russian"),
+    kk: t("Казахский", "Қазақ тілі", "Kazakh"),
+    en: t("Английский", "Ағылшын тілі", "English"),
+  };
 
   if (!plan.directions.length) return null;
 
@@ -94,11 +98,7 @@ export function HrExternalLearningSection({
               <div>
                 <span>
                   {direction.skillType === "hard"
-                    ? t(
-                        "Профессиональный навык",
-                        "Кәсіби дағды",
-                        "Hard skill",
-                      )
+                    ? t("Профессиональный навык", "Кәсіби дағды", "Hard skill")
                     : t("Гибкий навык", "Икемді дағды", "Soft skill")}
                 </span>
                 <h4>{catalogName(direction.skillId, locale)}</h4>
@@ -170,7 +170,7 @@ export function HrExternalLearningSection({
                       </span>
                       <span>
                         {course.languages
-                          .map((language) => localeNames[language])
+                          .map((language) => languageNames[language])
                           .join(" · ")}
                       </span>
                       <strong>

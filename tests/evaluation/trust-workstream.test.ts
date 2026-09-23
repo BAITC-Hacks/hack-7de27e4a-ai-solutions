@@ -4,6 +4,7 @@ import { createFixedWindowRateLimiter, POST } from "@/app/api/ai/review/route";
 import { buildHrAnalytics } from "@/domain/analytics";
 import { recommendForEmployee } from "@/domain/recommendation";
 import { applyActivityCompletion } from "@/domain/simulation";
+import { SESSION_COOKIE_NAME, signDemoSession } from "@/lib/identity";
 import {
   buildCriticSystemPrompt,
   buildCriticUserPrompt,
@@ -79,7 +80,7 @@ describe("bounded LLM critic", () => {
     if (!engineResult) return;
     const response = await POST(new Request("http://localhost/api/ai/review", {
       method: "POST",
-      headers: { "content-type": "application/json" },
+      headers: { "content-type": "application/json", cookie: `${SESSION_COOKIE_NAME}=${signDemoSession(engineResult.employeeId)}` },
       body: JSON.stringify({
         employeeId: engineResult.employeeId,
         language: engineResult.effectiveProfile.employee.preferredLanguage,
@@ -122,7 +123,7 @@ describe("bounded LLM critic", () => {
 
     const response = await POST(new Request("http://localhost/api/ai/review", {
       method: "POST",
-      headers: { "content-type": "application/json" },
+      headers: { "content-type": "application/json", cookie: `${SESSION_COOKIE_NAME}=${signDemoSession("E0010")}` },
       body: JSON.stringify({
         employeeId: "E0010",
         language: "ru",

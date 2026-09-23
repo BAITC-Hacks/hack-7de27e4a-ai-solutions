@@ -65,10 +65,7 @@ function renderLeaf(
   );
 }
 
-function renderHrLeaf(
-  locale: Locale,
-  plan: HrExternalLearningPlan,
-): string {
+function renderHrLeaf(locale: Locale, plan: HrExternalLearningPlan): string {
   return renderToStaticMarkup(
     createElement(I18nProvider, {
       initialLocale: locale,
@@ -97,20 +94,20 @@ describe("External Learning in the active employee experience", () => {
   it.each([
     [
       "ru",
-      "Внутри компании пока нет подходящего шага",
-      "Не влияет на расчёт.",
+      "Курсы для навыков без внутреннего обучения",
+      "Прогресс по внешним курсам не меняет карьерную готовность: их результат пока не подтверждён.",
       "Открыть курс",
     ],
     [
       "kk",
-      "Компания ішінде әзірге сәйкес қадам жоқ",
-      "Есептеуге әсер етпейді.",
+      "Ішкі оқытуы жоқ дағдыларға арналған курстар",
+      "Сыртқы курстардағы ілгерілеу мансаптық дайындықты өзгертпейді: олардың нәтижесі әлі расталмаған.",
       "Курсты ашу",
     ],
     [
       "en",
-      "There is no suitable internal step yet",
-      "Does not affect the calculation.",
+      "Courses for skills without internal training",
+      "External course progress does not change career readiness: the results have not yet been verified.",
       "Open course",
     ],
   ] as const)(
@@ -122,17 +119,37 @@ describe("External Learning in the active employee experience", () => {
       expect(html).toContain(disclaimer);
       expect(html).toContain(action);
       if (locale !== "ru") {
-        expect(html).not.toContain("Внутри компании пока нет подходящего шага");
+        expect(html).not.toContain(
+          "Курсы для навыков без внутреннего обучения",
+        );
         expect(html).not.toContain("Открыть курс</a>");
       }
       if (locale !== "kk") {
-        expect(html).not.toContain("Компания ішінде әзірге сәйкес қадам жоқ");
+        expect(html).not.toContain(
+          "Ішкі оқытуы жоқ дағдыларға арналған курстар",
+        );
       }
       if (locale !== "en") {
-        expect(html).not.toContain("There is no suitable internal step yet");
+        expect(html).not.toContain(
+          "Courses for skills without internal training",
+        );
       }
     },
   );
+
+  it("keeps the optional courses collapsed behind a labelled native disclosure", () => {
+    const html = renderLeaf("en", dataset, employeeId);
+    const summary = html.match(/<summary[^>]*>([\s\S]*?)<\/summary>/)?.[1];
+
+    expect(html).toMatch(/<details\b[^>]*>/);
+    expect(html).not.toMatch(/<details\b[^>]*\sopen(?:=|[\s>])/);
+    expect(summary).toContain('id="employee-external-learning-title"');
+    expect(summary).toContain("External courses");
+    expect(summary).not.toMatch(/<a\b|<button\b/);
+    expect(html).toContain("We consider your level and preferred language:");
+    expect(html).not.toContain("come first");
+    expect(html).not.toMatch(/top-3|score/);
+  });
 
   it("renders only isolated HTTPS course links", () => {
     const html = renderLeaf("en", dataset, employeeId);
@@ -171,7 +188,7 @@ describe("External Learning in the active employee experience", () => {
 
     const internalRecommendations = html.indexOf("Start here");
     const externalLearning = html.indexOf(
-      "There is no suitable internal step yet",
+      "Courses for skills without internal training",
     );
     const decisionInspector = html.indexOf("Why this particular step?");
     expect(internalRecommendations).toBeGreaterThanOrEqual(0);
@@ -308,9 +325,13 @@ describe("External Learning in the active HR experience", () => {
       "Organization-wide aggregate; no individual employee ranking is used.",
     );
     expect(html).toContain("External source");
-    // Идентификаторы проверяются на самом внешнем блоке (тесты выше), а не на всём
-    // дашборде: требование кейса «HR видит, кто выпадает из развития» подразумевает
-    // поимённый список, и DropoutPanel его выводит осознанно.
+    // HR may inspect the separate, access-gated dropout list. The external plan
+    // itself must remain aggregate-only even when mounted beside that panel.
+    const externalBlock = html.match(
+      /<section\b[^>]*aria-labelledby="hr-external-learning-title"[\s\S]*?<\/section>/,
+    )?.[0];
+    expect(externalBlock).toBeDefined();
+    expect(externalBlock).not.toMatch(/\bE\d{4}\b/);
     expect(store.getState()).toBe(before);
     expect(store.getState().ledger).toHaveLength(0);
   });

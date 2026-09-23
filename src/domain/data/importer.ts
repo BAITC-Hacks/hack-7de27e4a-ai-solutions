@@ -309,6 +309,15 @@ export function importCareerQuestDataset(files: CareerQuestFiles): NormalizedDat
   if (new Set(metaDates).size !== 1) {
     issues.push({ source: "relations", path: "meta.as_of_date", message: "Dataset files use different snapshot dates" });
   }
+  historyRows.forEach((row, index) => {
+    if (row.date > skills.meta.as_of_date) {
+      issues.push({
+        source: "activity_history.csv",
+        path: `row.${index + 2}.date`,
+        message: "History date must not be after the dataset snapshot",
+      });
+    }
+  });
 
   const partial: Omit<NormalizedDataset, "historyByEmployeeId"> = {
     meta: {

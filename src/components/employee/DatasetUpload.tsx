@@ -1,36 +1,27 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
-import { useI18n } from "@/lib/i18n/I18nProvider";
-import { localizeMessage } from "@/lib/i18n/domain";
-import { useEmployeeStore } from "../../state/EmployeeStoreProvider";
-import type {
-  UploadName,
-  UploadSources,
-} from "../../state/intelligenceAdapter";
+import { DatasetValidationError } from "@/domain/data";
 import {
-  bundleToFiles,
   detectDatasetSlot,
+  JudgeImportError,
   mergeDatasetTexts,
-  type BundleTexts,
+  normalizedDatasetToBundle,
   type DatasetSlot,
   type MergeMode,
   type MergeSummary,
 } from "@/domain/data/judge-import";
+import { useIdentity } from "@/components/identity/IdentityProvider";
+import { useI18n } from "@/lib/i18n/I18nProvider";
+import { localizeMessage } from "@/lib/i18n/domain";
+import {
+  useEmployeeStore,
+  useOptionalEmployeeStore,
+} from "../../state/EmployeeStoreProvider";
+import type {
+  UploadName,
+  UploadSources,
+} from "../../state/intelligenceAdapter";
 import styles from "./employee.module.css";
-
-/** Жюри приносит файлы с произвольными именами; слот определяется по содержимому. */
-const SLOT_TO_NAME: Record<DatasetSlot, UploadName> = {
-  employees: "employees.json",
-  events: "events.json",
-  skills: "skills.json",
-  history: "activity_history.csv",
-};
-const NAME_TO_SLOT: Record<UploadName, DatasetSlot> = {
-  "employees.json": "employees",
-  "events.json": "events",
-  "skills.json": "skills",
-  "activity_history.csv": "history",
-};
 const names: UploadName[] = [
   "employees.json",
   "events.json",
@@ -38,14 +29,44 @@ const names: UploadName[] = [
   "activity_history.csv",
 ];
 const limit = 10 * 1024 * 1024;
+const slotNames: Record<DatasetSlot, UploadName> = {
+  employees: "employees.json",
+  events: "events.json",
+  skills: "skills.json",
+  history: "activity_history.csv",
+};
+type SelectedFile = { name: string; text: string };
 type UploadError = {
-  kind: "unknown" | "large" | "read" | "demo" | "invalid-demo";
+  kind: "unknown" | "large" | "read" | "merge" | "validation" | "changed";
   name?: string;
+  message?: string;
 };
 export function DatasetUpload() {
   const { locale, t, date, number } = useI18n();
+  const identity = useIdentity();
   const input = useRef<HTMLInputElement>(null);
-  const [files, setFiles] = useState<Partial<Record<UploadName, File>>>({});
+  const [files, setFiles] = useState<Partial<Record<UploadName, SelectedFile>>>(
+    {},
+  );
+  const [mode, setMode] = useState<MergeMode>("append");
+  const [summary, setSummary] = useState<MergeSummary | null>(null);
+  const store = useOptionalEmployeeStore();
+  const pending = useRef(false);
+  const mounted = useRef(true);
+  const identityId = identity.session?.employeeId ?? null;
+  const identityRef = useRef(identityId);
+  identityRef.current = identityId;
+  useEffect(() => {
+    mounted.current = true;
+    return () => {
+      mounted.current = false;
+    };
+  }, []);
+  useEffect(() => {
+    setFiles({});
+    setSummary(null);
+    setError(null);
+  }, [identityId]);
   const [error, setError] = useState<UploadError[] | null>(null);
   const errorText = (issue: UploadError) => {
     const file = issue.name ?? "";
@@ -70,197 +91,182 @@ export function DatasetUpload() {
           "Файлдарды оқу мүмкін болмады. Оларды қайта таңдаңыз.",
           "Unable to read the files. Please select them again.",
         );
-      case "invalid-demo":
+      case "changed":
         return t(
-          "Демонстрационный набор недоступен. Вы можете загрузить свои файлы.",
-          "Демо-жиын қолжетімсіз. Өз файлдарыңызды жүктей аласыз.",
-          "The demo dataset is unavailable. You can upload your own files.",
+          "Данные или профиль изменились. Выберите файлы повторно.",
+          "Деректер немесе профиль өзгерді. Файлдарды қайта таңдаңыз.",
+          "The workspace or profile changed. Select the files again.",
         );
-      default:
+      case "validation":
+        return `${file ? `${file}: ` : ""}${localizeMessage(issue.message ?? "Invalid JSON", locale)}`;
+      case "merge":
         return t(
-          "Не удалось загрузить демо. Попробуйте ещё раз или выберите файлы.",
-          "Демоны жүктеу мүмкін болмады. Қайталап көріңіз немесе файлдарды таңдаңыз.",
-          "Unable to load the demo. Try again or choose files.",
+          "Не удалось собрать набор. Проверьте формат {file}; для частичного импорта сначала откройте демо или полный набор.",
+          "Жиынды құрастыру мүмкін болмады. {file} пішімін тексеріңіз; ішінара импорт үшін алдымен демоны немесе толық жиынды ашыңыз.",
+          "Unable to assemble the dataset. Check the format of {file}; open the demo or a full dataset before importing partial files.",
+          { file },
         );
     }
   };
   const [reading, setReading] = useState(false);
   const [dragging, setDragging] = useState(false);
-  const [mode, setMode] = useState<MergeMode>("append");
-  const [summary, setSummary] = useState<MergeSummary | null>(null);
-  /** Последний успешно загруженный набор — основа для частичных догрузок. */
-  const baseBundle = useRef<BundleTexts | null>(null);
-  const demoRequest = useRef<AbortController | null>(null);
-  useEffect(() => () => demoRequest.current?.abort(), []);
   const { importFiles, status, issues, dataset, adapterReady, selectEmployee } =
     useEmployeeStore((s) => s);
-  const busy = reading || status === "loading";
+  const busy = reading || status === "loading" || identity.loading;
   const acceptFiles = async (incoming: FileList | null) => {
-    if (!incoming || busy) return;
+    if (!incoming || busy || pending.current) return;
+    pending.current = true;
+    setReading(true);
+    const current = store?.getState().normalizedDataset;
+    const owner = identityId;
     const next = { ...files };
     const errors: UploadError[] = [];
-    for (const file of Array.from(incoming)) {
-      if (file.size > limit) {
-        errors.push({ kind: "large", name: file.name });
-        continue;
-      }
-      if (names.includes(file.name as UploadName)) {
-        next[file.name as UploadName] = file;
-        continue;
-      }
-      // Имя нестандартное: узнаём файл по содержимому, иначе жюри упрётся в отказ.
-      const detected = detectDatasetSlot(file.name, await file.text());
-      if (!detected.slot) {
-        errors.push({ kind: "unknown", name: file.name });
-        continue;
-      }
-      next[SLOT_TO_NAME[detected.slot]] = file;
-    }
-    setFiles(next);
-    setSummary(null);
-    setError(errors.length ? errors : null);
-  };
-  /** Пытается взять основу для догрузки: последний импорт, иначе демо-набор. */
-  const resolveBase = async (): Promise<BundleTexts | null> => {
-    if (baseBundle.current) return baseBundle.current;
     try {
-      const response = await fetch("/api/demo-dataset");
-      if (!response.ok) return null;
-      const body = (await response.json()) as Record<string, unknown>;
-      const fields = ["employees", "events", "skills", "history"] as const;
-      if (fields.some((field) => typeof body[field] !== "string")) return null;
-      return {
-        employees: body.employees as string,
-        events: body.events as string,
-        skills: body.skills as string,
-        history: body.history as string,
-      };
+      for (const file of Array.from(incoming)) {
+        if (file.size > limit) {
+          errors.push({ kind: "large", name: file.name });
+          continue;
+        }
+        const text = await file.text();
+        const detected = detectDatasetSlot(file.name, text);
+        if (!detected.slot) {
+          errors.push({ kind: "unknown", name: file.name });
+          continue;
+        }
+        next[slotNames[detected.slot]] = { name: file.name, text };
+      }
+      if (!mounted.current) return;
+      if (
+        identityRef.current !== owner ||
+        store?.getState().normalizedDataset !== current
+      ) {
+        setError([{ kind: "changed" }]);
+        return;
+      }
+      setFiles(next);
+      setSummary(null);
+      setError(errors.length ? errors : null);
     } catch {
-      return null;
+      if (mounted.current) setError([{ kind: "read" }]);
+    } finally {
+      pending.current = false;
+      if (mounted.current) setReading(false);
     }
-  };
-
-  const importSelected = async (
-    selected: Partial<Record<UploadName, File>>,
-    requestedMode: MergeMode = "replace",
-  ) => {
-    const chosen = names.filter((name) => selected[name]);
-    const incoming: Partial<Record<DatasetSlot, string>> = {};
-    for (const name of chosen) {
-      incoming[NAME_TO_SLOT[name]] = await selected[name]!.text();
-    }
-
-    const complete = chosen.length === names.length;
-    const base =
-      complete && requestedMode === "replace" ? null : await resolveBase();
-    const { bundle, summary: merged } = mergeDatasetTexts({
-      base,
-      incoming,
-      mode: base ? requestedMode : "replace",
-    });
-
-    const files = bundleToFiles(bundle);
-    await importFiles({
-      "employees.json": files.employees as string,
-      "events.json": files.events as string,
-      "skills.json": files.skills as string,
-      "activity_history.csv": files.activityHistoryCsv,
-    } as UploadSources);
-    baseBundle.current = bundle;
-    setSummary(merged);
   };
   const load = async () => {
+    if (busy || pending.current) return;
+    pending.current = true;
     setReading(true);
     setError(null);
+    setSummary(null);
     try {
-      await importSelected(files, dataset ? mode : "replace");
-    } catch {
-      setError([{ kind: "read" }]);
+      const current = store?.getState();
+      const base = current?.normalizedDataset
+        ? normalizedDatasetToBundle(current.normalizedDataset)
+        : null;
+      const incoming = Object.fromEntries(
+        Object.entries(slotNames)
+          .filter(([, name]) => files[name])
+          .map(([slot, name]) => [slot, files[name]!.text]),
+      );
+      const result = mergeDatasetTexts({
+        base,
+        incoming,
+        mode: base ? mode : "replace",
+      });
+      const sources = Object.fromEntries(
+        Object.entries(slotNames).map(([slot, name]) => [
+          name,
+          result.bundle[slot as DatasetSlot],
+        ]),
+      ) as UploadSources;
+      if (await importFiles(sources)) {
+        identity.useImportedDataset();
+        if (
+          current?.selectedEmployeeId &&
+          store?.getState().views[current.selectedEmployeeId]
+        )
+          selectEmployee(current.selectedEmployeeId);
+        if (mounted.current) {
+          setSummary(result.summary);
+          setFiles({});
+        }
+      }
+    } catch (cause) {
+      if (cause instanceof DatasetValidationError)
+        setError(
+          cause.issues
+            .slice(0, 10)
+            .map((issue) => ({
+              kind: "validation",
+              name: `${issue.source} · ${issue.path}`,
+              message: issue.message,
+            })),
+        );
+      else if (cause instanceof JudgeImportError)
+        setError([
+          {
+            kind: "merge",
+            name: cause.slot ? slotNames[cause.slot] : "JSON / CSV",
+          },
+        ]);
+      else setError([{ kind: "read" }]);
     } finally {
+      pending.current = false;
       setReading(false);
     }
   };
   const loadDemo = async () => {
     if (busy) return;
-    setReading(true);
-    setError(null);
-    const controller = new AbortController();
-    demoRequest.current = controller;
-    try {
-      const response = await fetch("/api/demo-dataset", {
-        signal: controller.signal,
-      });
-      if (!response.ok) throw new Error("demo");
-      const body = (await response.json()) as Record<string, unknown>;
-      const fields = ["employees", "events", "skills", "history"] as const;
-      if (fields.some((field) => typeof body[field] !== "string"))
-        throw new Error("invalid-demo");
-      const selected = Object.fromEntries(
-        names.map((name, index) => [
-          name,
-          new File([body[fields[index]] as string], name, {
-            type: name.endsWith("csv") ? "text/csv" : "application/json",
-          }),
-        ]),
-      ) as Record<UploadName, File>;
-      if (controller.signal.aborted) return;
-      setFiles(selected);
-      await importSelected(selected, "replace");
-    } catch (cause) {
-      if (!controller.signal.aborted)
-        setError([
-          {
-            kind:
-              cause instanceof Error && cause.message === "invalid-demo"
-                ? "invalid-demo"
-                : "demo",
-          },
-        ]);
-    } finally {
-      if (!controller.signal.aborted) setReading(false);
-      demoRequest.current = null;
-    }
+    await identity.loadDemo();
   };
   const fileControls = (
     <>
+      {dataset && (
+        <fieldset disabled={busy}>
+          <legend>{t("Режим импорта", "Импорт режимі", "Import mode")}</legend>
+          <label>
+            <input
+              type="radio"
+              name="dataset-mode"
+              value="append"
+              checked={mode === "append"}
+              onChange={() => setMode("append")}
+            />{" "}
+            {t("Дополнить", "Толықтыру", "Append")}
+          </label>
+          {" · "}
+          <label>
+            <input
+              type="radio"
+              name="dataset-mode"
+              value="replace"
+              checked={mode === "replace"}
+              onChange={() => setMode("replace")}
+            />{" "}
+            {t("Заменить", "Ауыстыру", "Replace")}
+          </label>
+        </fieldset>
+      )}
       <p className={styles.muted}>
-        {!dataset
-          ? t(
-              "Загрузите файлы набора. Имя файла не важно — тип определяется по содержимому.",
-              "Жиын файлдарын жүктеңіз. Файл аты маңызды емес — түрі мазмұны бойынша анықталады.",
-              "Upload the dataset files. The file name does not matter - the type is detected from the content.",
-            )
-          : mode === "append"
+        {dataset
+          ? mode === "append"
             ? t(
-                "Дополнит текущий набор: новые профили добавятся к загруженным, прогресс сессии сохранится.",
-                "Ағымдағы жиынды толықтырады: жаңа профильдер қосылады, сессия ілгерілеуі сақталады.",
-                "Adds to the current dataset: new profiles are appended and session progress is kept.",
+                "Добавьте профили или историю. Подтверждённый прогресс войдёт в набор; прогноз и журнал сессии начнутся заново. Совпавшие ID обновятся.",
+                "Профильдерді немесе тарихты қосыңыз. Расталған ілгерілеу жиында сақталады; болжам мен сессия журналы жаңадан басталады. Бірдей ID жаңартылады.",
+                "Add profiles or history. Confirmed progress becomes part of the dataset; the preview and session log restart. Matching IDs are updated.",
               )
             : t(
-                "Новый набор заменит данные и сбросит прогресс текущей сессии.",
-                "Жаңа жиын деректерді ауыстырып, ағымдағы сессияның ілгерілеуін өшіреді.",
-                "A new dataset replaces current data and resets this session's progress.",
-              )}
+                "Выбранные части заменят текущие. Отсутствующие части останутся; история с неизвестными ссылками будет отклонена.",
+                "Таңдалған бөліктер ағымдағы деректерді ауыстырады. Қалған бөліктер сақталады; белгісіз сілтемелері бар тарих қабылданбайды.",
+                "Selected parts replace current data. Other parts remain; history with unknown references is rejected.",
+              )
+          : t(
+              "Загрузите четыре файла или откройте демо для добавления профилей жюри. Тип определяется по содержимому; данные обрабатываются в браузере.",
+              "Төрт файлды жүктеңіз немесе қазылар профильдерін қосу үшін демоны ашыңыз. Түрі мазмұны бойынша анықталады; деректер браузерде өңделеді.",
+              "Upload four files or open the demo to add judge profiles. Files are detected by content and processed in your browser.",
+            )}
       </p>
-      {dataset && (
-        <div className={styles.fileList} role="radiogroup">
-          {(["append", "replace"] as const).map((option) => (
-            <label key={option}>
-              <input
-                type="radio"
-                name="import-mode"
-                value={option}
-                checked={mode === option}
-                disabled={busy}
-                onChange={() => setMode(option)}
-              />{" "}
-              {option === "append"
-                ? t("Дополнить", "Толықтыру", "Append")
-                : t("Заменить", "Ауыстыру", "Replace")}
-            </label>
-          ))}
-        </div>
-      )}
       <div
         className={`${styles.dropzone} ${dragging ? styles.dragging : ""}`}
         onDragOver={(event) => {
@@ -331,7 +337,10 @@ export function DatasetUpload() {
               >
                 {files[name] ? "✓" : "○"}
               </span>
-              <span>{name}</span>
+              <span>
+                {files[name]?.name ?? name}
+                {files[name] && files[name].name !== name ? ` → ${name}` : ""}
+              </span>
               {files[name] && (
                 <button
                   className={styles.removeFile}
@@ -359,30 +368,24 @@ export function DatasetUpload() {
       </details>
       <button
         className={styles.primaryButton}
-        disabled={
-          busy || !adapterReady || names.every((name) => !files[name])
-        }
+        disabled={busy || !adapterReady || !names.some((name) => files[name])}
         onClick={load}
       >
         {busy
           ? t("Проверяем данные…", "Деректер тексерілуде…", "Validating data…")
-          : dataset
-            ? mode === "append"
+          : dataset && mode === "append"
+            ? t("Дополнить набор", "Жиынды толықтыру", "Append to dataset")
+            : dataset
               ? t(
-                  "Дополнить набор",
-                  "Жиынды толықтыру",
-                  "Append to dataset",
+                  "Проверить и заменить",
+                  "Тексеріп ауыстыру",
+                  "Validate and replace",
                 )
               : t(
-                  "Заменить набор и сбросить прогресс",
-                  "Жиынды ауыстырып, ілгерілеуді өшіру",
-                  "Replace dataset and reset progress",
-                )
-            : t(
-                "Проверить и загрузить",
-                "Тексеріп жүктеу",
-                "Validate and load",
-              )}
+                  "Проверить и загрузить",
+                  "Тексеріп жүктеу",
+                  "Validate and load",
+                )}
       </button>
       {!adapterReady && (
         <p className={styles.muted}>
@@ -395,56 +398,6 @@ export function DatasetUpload() {
       )}
     </>
   );
-  const importSummary = summary ? (
-        <details className={styles.methodDetails} open>
-          <summary>
-            {t("Результат импорта", "Импорт нәтижесі", "Import result")}
-          </summary>
-          <ul className={styles.fileList}>
-            <li>
-              {t("Добавлено профилей", "Профильдер қосылды", "Profiles added")}:{" "}
-              {number(summary.addedEmployees)}
-            </li>
-            <li>
-              {t("Обновлено профилей", "Профильдер жаңартылды", "Profiles updated")}:{" "}
-              {number(summary.updatedEmployees)}
-            </li>
-            <li>
-              {t("Добавлено записей истории", "Тарих жазбалары қосылды", "History rows added")}:{" "}
-              {number(summary.addedHistory)}
-            </li>
-            <li>
-              {t("Отклонено строк", "Жолдар қабылданбады", "Rows rejected")}:{" "}
-              {number(summary.rejectedTotal)}
-            </li>
-          </ul>
-          {summary.rejectedRows.length > 0 && (
-            <ul className={styles.fileList}>
-              {summary.rejectedRows.slice(0, 5).map((rejected) => (
-                <li key={`${rejected.source}-${rejected.row}`}>
-                  {t("строка", "жол", "row")} {number(rejected.row)}
-                  {rejected.recordId ? ` · ${rejected.recordId}` : ""} ·{" "}
-                  {rejected.reason}
-                </li>
-              ))}
-            </ul>
-          )}
-          {summary.newEmployeeIds.length > 0 && (
-            <button
-              className={styles.textButton}
-              disabled={busy}
-              onClick={() => selectEmployee(summary.newEmployeeIds[0])}
-            >
-              {t(
-                "Перейти к добавленным профилям",
-                "Қосылған профильдерге өту",
-                "Go to the added profiles",
-              )}
-            </button>
-          )}
-        </details>
-  ) : null;
-
   return (
     <section
       id="data-upload"
@@ -545,9 +498,9 @@ export function DatasetUpload() {
           <details className={styles.replaceDataset}>
             <summary>
               {t(
-                " Загрузить ещё данные или заменить набор ",
-                " Деректерді қосу немесе жиынды ауыстыру ",
-                " Add more data or replace the dataset ",
+                " Дополнить или заменить данные ",
+                " Деректерді толықтыру немесе ауыстыру ",
+                " Append or replace data ",
               )}
             </summary>
             <div className={styles.uploadControls}>{fileControls}</div>
@@ -556,7 +509,6 @@ export function DatasetUpload() {
       ) : (
         fileControls
       )}
-      {importSummary}
       {error && (
         <p role="alert" className={styles.error}>
           <span>{error.map(errorText).join(" ")}</span>
@@ -572,6 +524,96 @@ export function DatasetUpload() {
             ×
           </button>
         </p>
+      )}
+      {summary && (
+        <details open className={styles.methodDetails}>
+          <summary>
+            {t("Итог импорта", "Импорт нәтижесі", "Import summary")}
+          </summary>
+          <p>
+            {summary.mode === "replace"
+              ? t(
+                  "Выбранные части набора заменены.",
+                  "Жиынның таңдалған бөліктері ауыстырылды.",
+                  "Selected dataset parts were replaced.",
+                )
+              : t(
+                  "Профили: +{added}, обновлено {updated}. История: +{history}, обновлено {historyUpdated}.",
+                  "Профильдер: +{added}, жаңартылғаны {updated}. Тарих: +{history}, жаңартылғаны {historyUpdated}.",
+                  "Profiles: +{added}, updated {updated}. History: +{history}, updated {historyUpdated}.",
+                  {
+                    added: number(summary.addedEmployees),
+                    updated: number(summary.updatedEmployees),
+                    history: number(summary.addedHistory),
+                    historyUpdated: number(summary.updatedHistory),
+                  },
+                )}
+          </p>
+          <p>
+            {t(
+              "Отклонено строк истории: {count}",
+              "Қабылданбаған тарих жолдары: {count}",
+              "Rejected history rows: {count}",
+              { count: number(summary.rejectedTotal) },
+            )}
+          </p>
+          {!!summary.rejectedRows.length && (
+            <ul>
+              {summary.rejectedRows.slice(0, 5).map((row, index) => (
+                <li key={index}>
+                  {row.source === "incoming"
+                    ? t("Новый файл", "Жаңа файл", "Incoming file")
+                    : t("Текущий набор", "Ағымдағы жиын", "Current dataset")}
+                  {" · "}
+                  {t("строка {row}", "{row}-жол", "row {row}", {
+                    row: number(row.row),
+                  })}
+                  {row.recordId ? ` · ${row.recordId}` : ""}:{" "}
+                  {row.reason.startsWith("неизвестный employee_id ")
+                    ? t(
+                        "Неизвестный сотрудник {id}",
+                        "Белгісіз қызметкер {id}",
+                        "Unknown employee {id}",
+                        {
+                          id: row.reason.slice(
+                            "неизвестный employee_id ".length,
+                          ),
+                        },
+                      )
+                    : t(
+                        "Неизвестная активность {id}",
+                        "Белгісіз іс-шара {id}",
+                        "Unknown activity {id}",
+                        {
+                          id: row.reason.slice("неизвестный event_id ".length),
+                        },
+                      )}
+                </li>
+              ))}
+            </ul>
+          )}
+          {summary.rejectedTotal > 5 && (
+            <p className={styles.muted}>
+              {t(
+                "Показаны первые 5 отклонённых строк.",
+                "Алғашқы 5 қабылданбаған жол көрсетілген.",
+                "Showing the first 5 rejected rows.",
+              )}
+            </p>
+          )}
+          {!!summary.newEmployeeIds.length && (
+            <button
+              className={styles.textButton}
+              onClick={() => selectEmployee(summary.newEmployeeIds[0])}
+            >
+              {t(
+                "Открыть добавленный профиль",
+                "Қосылған профильді ашу",
+                "Open an added profile",
+              )}
+            </button>
+          )}
+        </details>
       )}
       {!!issues.length && (
         <div aria-live="polite" className={styles.validation}>

@@ -1,5 +1,6 @@
 import { readFile } from "node:fs/promises";
 import path from "node:path";
+import Papa from "papaparse";
 
 import { beforeAll, describe, expect, it } from "vitest";
 
@@ -57,7 +58,9 @@ describe("определение типа файла", () => {
   });
 
   it("не спотыкается о BOM", () => {
-    expect(detectDatasetSlot("anything.json", bomEmployees).slot).toBe("employees");
+    expect(detectDatasetSlot("anything.json", bomEmployees).slot).toBe(
+      "employees",
+    );
   });
 
   it("не угадывает непонятный файл", () => {
@@ -94,9 +97,15 @@ describe("режим «дополнить»", () => {
     expect(summary.addedHistory).toBe(4);
     expect(summary.rejectedTotal).toBe(2);
     expect(summary.rejectedRows).toHaveLength(2);
-    expect(summary.rejectedRows[0]).toMatchObject({ row: 6, recordId: "J000005" });
+    expect(summary.rejectedRows[0]).toMatchObject({
+      row: 6,
+      recordId: "J000005",
+    });
     expect(summary.rejectedRows[0].reason).toContain("EV_099");
-    expect(summary.rejectedRows[1]).toMatchObject({ row: 7, recordId: "J000006" });
+    expect(summary.rejectedRows[1]).toMatchObject({
+      row: 7,
+      recordId: "J000006",
+    });
     expect(summary.rejectedRows[1].reason).toContain("E9999");
 
     const dataset = importCareerQuestDataset(bundleToFiles(bundle));
@@ -106,7 +115,10 @@ describe("режим «дополнить»", () => {
   it("заменяет существующий профиль и считает это обновлением", () => {
     const patched = JSON.stringify({
       employees: [
-        { ...JSON.parse(base.employees).employees[0], full_name: "Renamed Person" },
+        {
+          ...JSON.parse(base.employees).employees[0],
+          full_name: "Renamed Person",
+        },
       ],
     });
     const { bundle, summary } = mergeDatasetTexts({
@@ -123,7 +135,11 @@ describe("режим «дополнить»", () => {
 
   it("требует уже загруженный набор", () => {
     expect(() =>
-      mergeDatasetTexts({ base: null, incoming: { employees: judgeProfiles }, mode: "append" }),
+      mergeDatasetTexts({
+        base: null,
+        incoming: { employees: judgeProfiles },
+        mode: "append",
+      }),
     ).toThrow(JudgeImportError);
   });
 });
@@ -146,8 +162,76 @@ describe("режим «заменить»", () => {
 
   it("без базы и без части набора сообщает, чего не хватает", () => {
     expect(() =>
-      mergeDatasetTexts({ base: null, incoming: { employees: judgeProfiles }, mode: "replace" }),
+      mergeDatasetTexts({
+        base: null,
+        incoming: { employees: judgeProfiles },
+        mode: "replace",
+      }),
     ).toThrow(/events|skills|history/);
+  });
+
+  it("normalizes BOM before canonical validation, including replace mode", () => {
+    const { bundle } = mergeDatasetTexts({
+      base,
+      incoming: { employees: bomEmployees },
+      mode: "replace",
+    });
+    const dataset = importCareerQuestDataset(bundleToFiles(bundle));
+    expect(Object.keys(dataset.employeesById)).toHaveLength(1);
+  });
+});
+
+describe("import diagnostics keep the original incoming rows", () => {
+  it("rejects an invalid update without removing the existing history record", () => {
+    const original = Papa.parse<Record<string, string>>(base.history, {
+      header: true,
+      skipEmptyLines: true,
+    }).data[0];
+    const history = Papa.unparse([{ ...original, event_id: "EV_UNKNOWN" }]);
+    const result = mergeDatasetTexts({
+      base,
+      incoming: { history },
+      mode: "append",
+    });
+    expect(result.summary.rejectedRows).toEqual([
+      {
+        row: 2,
+        source: "incoming",
+        recordId: original.record_id,
+        reason: "неизвестный event_id EV_UNKNOWN",
+      },
+    ]);
+    expect(result.summary.updatedHistory).toBe(0);
+    const dataset = importCareerQuestDataset(bundleToFiles(result.bundle));
+    expect(
+      dataset.history.find((row) => row.id === original.record_id)?.eventId,
+    ).toBe(original.event_id);
+    expect(dataset.history).toHaveLength(2743);
+  });
+
+  it("does not silently prune malformed CSV as an unknown reference", () => {
+    expect(() =>
+      mergeDatasetTexts({
+        base,
+        incoming: {
+          history: "employee_id,event_id,status\nE999,EV999,completed",
+        },
+        mode: "append",
+      }),
+    ).toThrow(/validation failed/);
+  });
+
+  it("does not silently collapse duplicate incoming profile identifiers", () => {
+    const employee = JSON.parse(judgeProfiles).employees[0];
+    expect(() =>
+      mergeDatasetTexts({
+        base,
+        incoming: {
+          employees: JSON.stringify({ employees: [employee, employee] }),
+        },
+        mode: "append",
+      }),
+    ).toThrow(/Duplicate identifier/);
   });
 });
 

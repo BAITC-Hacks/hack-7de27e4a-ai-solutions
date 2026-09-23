@@ -60,4 +60,20 @@ describe("Career Quest exact dataset adapter", () => {
       );
     }
   });
+
+  it("rejects history after the snapshot before it can affect replay or recommendations", () => {
+    const files = loadChallengeFiles();
+    const header = files.activityHistoryCsv.split(/\r?\n/)[0];
+    files.activityHistoryCsv = `${header}\nFUTURE_COMPLETION,E0028,EV_006,2026-10-02,,completed,100,,,self`;
+    expect(() => importCareerQuestDataset(files)).toThrow(DatasetValidationError);
+    try {
+      importCareerQuestDataset(files);
+    } catch (error) {
+      expect((error as DatasetValidationError).issues).toEqual(expect.arrayContaining([
+        expect.objectContaining({ source: "activity_history.csv", path: "row.2.date", message: "History date must not be after the dataset snapshot" }),
+      ]));
+    }
+    files.activityHistoryCsv = files.activityHistoryCsv.replace("2026-10-02", "2026-10-01");
+    expect(importCareerQuestDataset(files).history[0].date).toBe("2026-10-01");
+  });
 });

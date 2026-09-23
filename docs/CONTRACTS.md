@@ -5,12 +5,29 @@
 > изобрели несовместимые типы. **Контракты заморожены после 00:20.** Любое изменение —
 > сначала сообщение в командный чат и запись в `docs/DECISIONS.md`, только потом commit.
 
-> **Актуально на 2026-09-23 (решение 18):** активные Employee/HR/Trust используют
-> `sharedEmployeeStore` и in-memory ledger. Текущий UI вызывает `/api/ai/explain`:
+> **Актуально на 2026-09-23 (решения 18–19):** Employee/HR/Trust используют
+> `sharedEmployeeStore` под signed demo identity. Demo Employee получает с сервера
+> только свой профиль/историю; HR — полный bundled dataset для аналитики.
+> Demo snapshots и отдельный ledger импорта — in-memory, переписка `/chat` — server JSON;
+> личные треды доступны только участникам, HR summary содержит только счётчики.
+> Общие типы чата — `src/server/messaging/types.ts`. Demo persona не является SSO.
+> Текущий UI вызывает `/api/ai/explain`:
 > `ReviewRequest` из `src/lib/evaluation/ai-contracts.ts` содержит `language` и
 > `candidates` с ID и структурированными числовыми facts. Описанный ниже `AIReviewRequest`
 > относится только к сохранённому `/api/ai/review` и не взаимозаменяем с ним.
-> IndexedDB/private projection не подключены к активным страницам. См. `INTEGRATION.md`.
+> `/api/ai/review` разрешён для собственного профиля или HR. Private Employee projection
+> применяется сервером; IndexedDB не подключён к активным страницам. См. `INTEGRATION.md`.
+
+> Дополнения PR #10/#11 (`main f287b406`) используют `src/domain/external` и
+> `src/domain/data/judge-import.ts`; общие recommendation-контракты и scoring не меняются.
+> Внешние курсы не являются внутренними рекомендациями или подтверждёнными completion;
+> частичный импорт проходит общую валидацию A и сохраняет границу текущего доступа.
+
+> Дополнение `main 0d068536`: `src/domain/gamification` читает normalized dataset/ledger,
+> не меняя recommendation-контракты. `/api/ai/agent` использует собственный контракт
+> `src/lib/evaluation/agent-contracts.ts`, требует signed HR role и работает с шестью
+> read-only tools. Его projected facts нельзя считать server-reconstructed evidence
+> из `/api/ai/review`. Ограничения и проверка — `REQUIREMENTS_AUDIT.md`.
 
 ## 0. Статус на момент написания
 
@@ -20,6 +37,7 @@
 | Recommendation, Evidence, FactorScores | `src/lib/contracts/recommendation.ts` | ✅ есть |
 | Simulation, Ledger, Planner | `src/domain/simulation`, `src/state/progress-ledger.ts` | ✅ есть |
 | AIReview, Verifier, Trust-метрики | `src/lib/evaluation`, `src/state/ai-review.ts` | ✅ есть |
+| Demo identity, mentorship, messages | `src/lib/identity`, `src/domain/mentorship`, `src/server/messaging/types.ts` | ✅ есть |
 
 Импорт всегда через алиас: `import type { ... } from "@/lib/contracts";`
 
@@ -166,6 +184,7 @@ interface AIReviewRequest {
    `SimulationResult`, а не считают их сами. Дублирование скоринга во фронте = P0-дефект.
 2. **Один активный `NormalizedDataset` в общей сессии.** Employee, HR и Trust читают
    `sharedEmployeeStore` под AppProviders; `/` и `/demo` ведут на `/employee`.
+   Сервер ограничивает demo dataset ролью identity; импорт не смешивается с demo ledger.
 3. **Симуляция не мутирует загруженные объекты.** Только новое состояние + ledger.
 4. **Уровни всегда `0..5`, факторы всегда `0..1`.**
 5. **Никаких hardcoded `E0028` / `EV_006`** в продуктовом коде — только в тестах и в отдельном

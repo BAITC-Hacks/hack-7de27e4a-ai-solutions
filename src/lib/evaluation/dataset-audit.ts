@@ -27,7 +27,9 @@ export function createDatasetAuditCases(dataset: NormalizedDataset): EvaluationC
       let matched = 0, checked = 0;
       for (const employee of Object.values(dataset.employeesById)) {
         const expected: Record<string, number> = { ...employee.skills };
-        const history = dataset.history.filter(h => h.employeeId === employee.id && h.status === 'completed' && h.date > employee.lastReviewDate).sort((a, b) => a.date.localeCompare(b.date) || a.id.localeCompare(b.id));
+        // Same-day records follow their import/ledger order: different max_level caps
+        // make an ID tie-break change the expected result even for a correct replay.
+        const history = dataset.history.filter(h => h.employeeId === employee.id && h.status === 'completed' && h.date > employee.lastReviewDate).sort((a, b) => a.date.localeCompare(b.date));
         for (const row of history) for (const effect of dataset.eventsById[row.eventId]?.developsSkills ?? []) {
           const before = expected[effect.skillId] ?? 0;
           expected[effect.skillId] = Math.max(before, Math.min(before + effect.gain, effect.maxLevel, 5));

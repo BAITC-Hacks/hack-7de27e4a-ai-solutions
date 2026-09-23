@@ -27,7 +27,9 @@ COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 # Датасет нужен внутри образа, чтобы демо работало из чистого clone.
 COPY --from=builder --chown=nextjs:nodejs /app/data ./data
+COPY --from=builder --chown=nextjs:nodejs /app/scripts/start-demo.cjs ./scripts/start-demo.cjs
+RUN mkdir -p /app/data/runtime && chown nextjs:nodejs /app/data/runtime && chmod 700 /app/data/runtime
 
 USER nextjs
 EXPOSE 3000
-CMD ["node", "server.js"]
+CMD ["node", "scripts/start-demo.cjs"]

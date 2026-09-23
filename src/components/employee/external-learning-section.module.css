@@ -1,10 +1,64 @@
 .panel {
   overflow: hidden;
-  padding: 26px;
   border: 1px solid var(--line, #e5ece8);
   border-radius: 22px;
   background: #fff;
   box-shadow: 0 3px 10px rgba(23, 51, 38, 0.02);
+}
+
+.disclosure > summary {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 21px 23px;
+  list-style: none;
+  cursor: pointer;
+  color: var(--ink, #172b24);
+}
+
+.disclosure > summary::marker {
+  content: "";
+}
+.disclosure > summary::-webkit-details-marker {
+  display: none;
+}
+.disclosure > summary::after {
+  content: "";
+  display: block;
+  width: 8px;
+  height: 8px;
+  flex: 0 0 8px;
+  margin-left: auto;
+  border-right: 1.7px solid currentColor;
+  border-bottom: 1.7px solid currentColor;
+  border-radius: 1px;
+  transform: translateY(-2px) rotate(45deg);
+  transition: transform 160ms ease;
+}
+.disclosure[open] > summary::after {
+  transform: translateY(2px) rotate(-135deg);
+}
+.disclosure > summary:focus-visible {
+  outline: 3px solid #a5dfbd;
+  outline-offset: -3px;
+  border-radius: 18px;
+}
+.disclosure > summary h2 {
+  flex: 1;
+  margin: 0;
+  font-size: 19px;
+  line-height: 1.4;
+  font-weight: 650;
+}
+.disclosureCount {
+  color: var(--muted, #687b72);
+  font-size: 14px;
+}
+.disclosure[open] > summary {
+  border-bottom: 1px solid var(--line, #e5ece8);
+}
+.content {
+  padding: 23px;
 }
 
 .heading {
@@ -14,17 +68,7 @@
   gap: 20px;
 }
 
-.eyebrow {
-  display: block;
-  margin-bottom: 5px;
-  color: var(--green, #00875a);
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 1.1px;
-  text-transform: uppercase;
-}
-
-.heading h2 {
+.heading h3 {
   margin: 0;
   color: var(--ink, #172b24);
   font-size: 22px;
@@ -127,7 +171,7 @@
   text-transform: uppercase;
 }
 
-.groupHeading h3 {
+.groupHeading h4 {
   margin: 3px 0 0;
   color: var(--ink, #172b24);
   font-size: 17px;
@@ -173,7 +217,7 @@
   color: #247553;
 }
 
-.course h4 {
+.course h5 {
   margin: 13px 0 10px;
   color: var(--ink, #172b24);
   font-size: 15px;
@@ -217,7 +261,9 @@
   font-size: 11px;
   font-weight: 650;
   text-decoration: none;
-  transition: background 160ms ease, transform 160ms ease;
+  transition:
+    background 160ms ease,
+    transform 160ms ease;
 }
 
 .courseLink:hover,
@@ -241,8 +287,9 @@
 }
 
 @media (max-width: 640px) {
-  .panel {
-    padding: 20px;
+  .content,
+  .disclosure > summary {
+    padding: 19px;
   }
 
   .heading,
@@ -262,6 +309,7 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .disclosure > summary::after,
   .courseLink {
     transition: none;
   }

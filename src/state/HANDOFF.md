@@ -1,17 +1,42 @@
 # Employee Digital Twin — handoff Манахнбета
 
-**Текущая интеграция поверх `main ef90bc9` (2026-09-23):** общий AppProviders/AppShell
-подключает локализованные Employee, HR и Trust к `sharedEmployeeStore`. `/` и `/demo`
-перенаправляют на `/employee`; ledger хранится в памяти вкладки. AI-объяснения карточек
-и Trust используют `/api/ai/explain` с ограниченным evidence и языком интерфейса.
-IDs-only `/api/ai/review` и новые модули main сохранены; `CareerQuestStore`, IndexedDB,
-private Employee projection и XP не подключены к активным страницам.
+**Текущая интеграция Skill Exchange (2026-09-23, решение 19):** AppProviders/AppShell
+сохраняют UI на RU/KK/EN; `IdentityProvider` связывает signed demo identity и
+`sharedEmployeeStore`. `/` и `/demo` ведут на `/employee`; `/chat` открывает наставников
+и переписку. Demo Employee получает с сервера только свой профиль/историю, HR — полный
+bundled dataset для аналитики. HR не читает чужие сообщения, доступны только агрегаты.
 
-Итог объединения: **168/168 тестов в 21 файле, production-сборка с полной проверкой
-TypeScript — PASS**. Browser smoke подтвердил общий профиль, HR CTA, RU/KK/EN и
-no-key объяснение; ошибок console нет. Подробности: `docs/INTEGRATION.md`.
-117 тестов прежнего UI и 152 теста PR #6 — исторические результаты; ранние проверки ниже
-также относятся к первоначальному потоку B.
+Карьерный ledger остаётся в памяти: demo snapshots восстанавливаются при выборе персоны,
+импорт хранится отдельно, reload сбрасывает прогресс. Сообщения и production session-secret
+сохраняются в `data/runtime`, исключённом из Git/Docker build context. В dev после перезапуска
+нужно выбрать профиль снова. Demo persona не является SSO. Локальный поиск наставников
+поддерживает импорт; server chat работает только со встроенным набором.
+
+UI использует `/api/ai/explain` с ограниченным evidence и языком интерфейса;
+IDs-only `/api/ai/review` разрешён для своего профиля или HR. `CareerQuestStore`, IndexedDB
+и прежний XP-модуль не подключены к активным страницам; private Employee projection применяется сервером.
+
+Исторический итог объединения с PR #10/#11: **268/268 тестов в 32 файлах — PASS**; production build
+с полной проверкой TypeScript — PASS без предупреждений. Bootstrap — 7/7 локальных
+процессных сценариев. Предыдущий gate Skill Exchange 223/28 остаётся историческим.
+В браузере проверены двусторонняя переписка, принятие, unread/read, plain text,
+RU/KK/EN, mobile 375 px без overflow, persistence чата после reload и HR privacy.
+E0028 confirm 74% → 78%, HR completions 1045, возврат сохраняет 78% и ledger 1.
+Подробности: `docs/INTEGRATION.md`.
+
+На базе `main 0d068536` сохранены DevelopmentEconomy и HR Agent/participation.
+Economy читает тот же normalized dataset/ledger; баллы за обязательные активности запрещены,
+подтверждение учитывается один раз. Демо-обмен/вызовы/opt-out живут только на странице,
+без реальной выдачи наград или передачи HR. HR Agent требует signed HR identity,
+использует read-only tools и ограниченные projected facts. Новый общий gate фиксируется
+в `docs/REQUIREMENTS_AUDIT.md`; результат 268 не относится к этому объединению.
+117/14, 152/19 и 168/21 — исторические результаты; ранние проверки ниже относятся к потоку B.
+
+PR #10 (отдельное внешнее обучение) и PR #11 (частичные judge-файлы) из `main f287b406`
+объединены с текущим UI. Append сериализует текущий scoped normalized dataset;
+committed skills/history сохраняются без повторного gain, новый импорт явно сбрасывает
+ledger/preview/planner. Browser judge import: 200 → 203, +4 history, rejects 2;
+J0001 открывается с readiness 58% и целью Product Manager Middle.
 
 Реализован поток B: `/employee`, импорт четырёх файлов, профиль, Decision Lab,
 evidence drawer, три стратегии планирования, what-if и журнал завершений.

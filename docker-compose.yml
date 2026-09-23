@@ -11,4 +11,10 @@ services:
       LLM_MODEL: ${LLM_MODEL:-}
       LLM_TIMEOUT_MS: ${LLM_TIMEOUT_MS:-2500}
       LLM_AGENT_TIMEOUT_MS: ${LLM_AGENT_TIMEOUT_MS:-10000}
-      CAREER_QUEST_VIEWER_ID: ${CAREER_QUEST_VIEWER_ID:-E0028}
+      SESSION_SECRET: ${SESSION_SECRET:-}
+      APP_ORIGIN: ${APP_ORIGIN:-}
+    volumes:
+      - career_quest_runtime:/app/data/runtime
+
+volumes:
+  career_quest_runtime:
