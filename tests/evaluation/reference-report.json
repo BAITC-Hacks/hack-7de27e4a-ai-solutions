@@ -1,0 +1,276 @@
+{
+  "version": "career-quest-trust/1.0.0",
+  "scope": "core-and-ai",
+  "cases": [
+    {
+      "id": "dataset-constraints",
+      "name": "Hard filters и критичные разрывы на загруженных профилях",
+      "scope": "core",
+      "status": "passed",
+      "detail": "438 рекомендаций; 0 нарушений. Hard filters проверены публичной eligibility-функцией A. Весь пакет: 67 мс; это не latency одного профиля."
+    },
+    {
+      "id": "dataset-replay",
+      "name": "History replay против независимого пересчёта",
+      "scope": "core",
+      "status": "passed",
+      "detail": "Совпало 4486 из 4486 уровней навыков. Эталон использует history, review date и cap, не функцию replay ядра."
+    },
+    {
+      "id": "dataset-projection",
+      "name": "Прогноз активности не снижает готовность",
+      "scope": "core",
+      "status": "passed",
+      "detail": "Все прогнозы сохраняют или повышают readiness с учётом округления."
+    },
+    {
+      "id": "latency:E0001",
+      "name": "Время рекомендации · E0001",
+      "scope": "core",
+      "status": "passed",
+      "detail": "Один локальный вызов recommendation engine; без сети и LLM."
+    },
+    {
+      "id": "latency:E0002",
+      "name": "Время рекомендации · E0002",
+      "scope": "core",
+      "status": "passed",
+      "detail": "Один локальный вызов recommendation engine; без сети и LLM."
+    },
+    {
+      "id": "latency:E0003",
+      "name": "Время рекомендации · E0003",
+      "scope": "core",
+      "status": "passed",
+      "detail": "Один локальный вызов recommendation engine; без сети и LLM."
+    },
+    {
+      "id": "latency:E0004",
+      "name": "Время рекомендации · E0004",
+      "scope": "core",
+      "status": "passed",
+      "detail": "Один локальный вызов recommendation engine; без сети и LLM."
+    },
+    {
+      "id": "latency:E0005",
+      "name": "Время рекомендации · E0005",
+      "scope": "core",
+      "status": "passed",
+      "detail": "Один локальный вызов recommendation engine; без сети и LLM."
+    },
+    {
+      "id": "latency:E0006",
+      "name": "Время рекомендации · E0006",
+      "scope": "core",
+      "status": "passed",
+      "detail": "Один локальный вызов recommendation engine; без сети и LLM."
+    },
+    {
+      "id": "latency:E0007",
+      "name": "Время рекомендации · E0007",
+      "scope": "core",
+      "status": "passed",
+      "detail": "Один локальный вызов recommendation engine; без сети и LLM."
+    },
+    {
+      "id": "latency:E0008",
+      "name": "Время рекомендации · E0008",
+      "scope": "core",
+      "status": "passed",
+      "detail": "Один локальный вызов recommendation engine; без сети и LLM."
+    },
+    {
+      "id": "latency:E0009",
+      "name": "Время рекомендации · E0009",
+      "scope": "core",
+      "status": "passed",
+      "detail": "Один локальный вызов recommendation engine; без сети и LLM."
+    },
+    {
+      "id": "latency:E0010",
+      "name": "Время рекомендации · E0010",
+      "scope": "core",
+      "status": "passed",
+      "detail": "Один локальный вызов recommendation engine; без сети и LLM."
+    },
+    {
+      "id": "latency:E0011",
+      "name": "Время рекомендации · E0011",
+      "scope": "core",
+      "status": "passed",
+      "detail": "Один локальный вызов recommendation engine; без сети и LLM."
+    },
+    {
+      "id": "latency:E0012",
+      "name": "Время рекомендации · E0012",
+      "scope": "core",
+      "status": "passed",
+      "detail": "Один локальный вызов recommendation engine; без сети и LLM."
+    },
+    {
+      "id": "latency:E0013",
+      "name": "Время рекомендации · E0013",
+      "scope": "core",
+      "status": "passed",
+      "detail": "Один локальный вызов recommendation engine; без сети и LLM."
+    },
+    {
+      "id": "latency:E0014",
+      "name": "Время рекомендации · E0014",
+      "scope": "core",
+      "status": "passed",
+      "detail": "Один локальный вызов recommendation engine; без сети и LLM."
+    },
+    {
+      "id": "latency:E0015",
+      "name": "Время рекомендации · E0015",
+      "scope": "core",
+      "status": "passed",
+      "detail": "Один локальный вызов recommendation engine; без сети и LLM."
+    },
+    {
+      "id": "latency:E0016",
+      "name": "Время рекомендации · E0016",
+      "scope": "core",
+      "status": "passed",
+      "detail": "Один локальный вызов recommendation engine; без сети и LLM."
+    },
+    {
+      "id": "latency:E0017",
+      "name": "Время рекомендации · E0017",
+      "scope": "core",
+      "status": "passed",
+      "detail": "Один локальный вызов recommendation engine; без сети и LLM."
+    },
+    {
+      "id": "latency:E0018",
+      "name": "Время рекомендации · E0018",
+      "scope": "core",
+      "status": "passed",
+      "detail": "Один локальный вызов recommendation engine; без сети и LLM."
+    },
+    {
+      "id": "latency:E0019",
+      "name": "Время рекомендации · E0019",
+      "scope": "core",
+      "status": "passed",
+      "detail": "Один локальный вызов recommendation engine; без сети и LLM."
+    },
+    {
+      "id": "latency:E0020",
+      "name": "Время рекомендации · E0020",
+      "scope": "core",
+      "status": "passed",
+      "detail": "Один локальный вызов recommendation engine; без сети и LLM."
+    },
+    {
+      "id": "ai-grounded",
+      "name": "Факты и ссылки на evidence подтверждены",
+      "scope": "ai",
+      "status": "passed",
+      "detail": "Пять факторных оценок сверены с исходным evidence."
+    },
+    {
+      "id": "ai-id",
+      "name": "Неизвестная активность отклоняется",
+      "scope": "ai",
+      "status": "passed",
+      "detail": "Ответ вне allowlist не принимается."
+    },
+    {
+      "id": "ai-number",
+      "name": "Изменённое число отклоняется",
+      "scope": "ai",
+      "status": "passed",
+      "detail": "Числовое утверждение должно совпадать с конкретным фактом."
+    },
+    {
+      "id": "ai-claim",
+      "name": "Неподтверждённая фраза отклоняется",
+      "scope": "ai",
+      "status": "passed",
+      "detail": "Произвольные выводы модели не попадают в объяснение."
+    },
+    {
+      "id": "ai-injection",
+      "name": "Инструкции в описании не уходят модели",
+      "scope": "ai",
+      "status": "passed",
+      "detail": "Входная strict-схема запрещает description, raw profile и history."
+    },
+    {
+      "id": "ai-outage",
+      "name": "Отказ провайдера сохраняет рекомендации",
+      "scope": "ai",
+      "status": "passed",
+      "detail": "Шаблонное объяснение остаётся доступно."
+    },
+    {
+      "id": "ai-timeout",
+      "name": "Зависший провайдер ограничен таймаутом",
+      "scope": "ai",
+      "status": "passed",
+      "detail": "После таймаута используется fallback."
+    },
+    {
+      "id": "ai-no-key-ru",
+      "name": "Объяснение без ключа: ru",
+      "scope": "ai",
+      "status": "passed",
+      "detail": "Язык выбран из preferred_language, ranking сохранён."
+    },
+    {
+      "id": "ai-no-key-kk",
+      "name": "Объяснение без ключа: kk",
+      "scope": "ai",
+      "status": "passed",
+      "detail": "Язык выбран из preferred_language, ranking сохранён."
+    },
+    {
+      "id": "ai-no-key-en",
+      "name": "Объяснение без ключа: en",
+      "scope": "ai",
+      "status": "passed",
+      "detail": "Язык выбран из preferred_language, ranking сохранён."
+    }
+  ],
+  "passed": 33,
+  "failed": 0,
+  "metrics": {
+    "eligibility": {
+      "numerator": 0,
+      "denominator": 438,
+      "rate": 0
+    },
+    "grounding": {
+      "numerator": 5,
+      "denominator": 5,
+      "rate": 1
+    },
+    "replay": {
+      "numerator": 4486,
+      "denominator": 4486,
+      "rate": 1
+    },
+    "criticalTargeting": {
+      "numerator": 135,
+      "denominator": 438,
+      "rate": 0.3082191780821918
+    },
+    "abstain": {
+      "numerator": 27,
+      "denominator": 27,
+      "rate": 1
+    },
+    "latency": {
+      "p50": 0.20280000000002474,
+      "p95": 0.2826999999997497,
+      "samples": 20
+    },
+    "fallback": {
+      "blocked": 1,
+      "timeout": 1,
+      "no_key": 3
+    }
+  }
+}
