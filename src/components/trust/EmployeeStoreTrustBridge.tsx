@@ -7,6 +7,11 @@ import {
   projectEmployeeStore,
   type EmployeeStoreSnapshot,
 } from "../../domain/analytics/store-adapter";
+import {
+  buildHrExternalLearningPlan,
+  loadExternalCourseCatalog,
+  type HrExternalLearningPlan,
+} from "../../domain/external";
 import { FACTORS, type Factor } from "../../lib/evaluation/ai-contracts";
 import { buildReviewRequest } from "../../lib/evaluation/explanations";
 import type { EvaluationCase } from "../../lib/evaluation/harness";
@@ -35,6 +40,21 @@ export function EmployeeStoreTrustBridge({
     store.getState,
     store.getState,
   );
+  const externalLearningPlan = useMemo<HrExternalLearningPlan | null>(() => {
+    if (access !== "hr") return null;
+    const dataset = snapshot.normalizedDataset ?? normalizedSource(snapshot);
+    if (!dataset) return null;
+    try {
+      return buildHrExternalLearningPlan(
+        dataset,
+        loadExternalCourseCatalog(dataset),
+      );
+    } catch {
+      // The external catalog is optional. A judge dataset with another taxonomy must
+      // not take down HR analytics, Trust or the internal recommendation surface.
+      return null;
+    }
+  }, [access, snapshot]);
   const value = useMemo<TrustIntegration>(() => {
     if (access !== "hr") return { access, state: "ready", analytics: null };
     try {
@@ -60,6 +80,7 @@ export function EmployeeStoreTrustBridge({
       return {
         access,
         analytics,
+        externalLearningPlan,
         state:
           snapshot.status === "loading"
             ? "loading"
@@ -89,7 +110,14 @@ export function EmployeeStoreTrustBridge({
     } catch {
       return { access, state: "invalid", analytics: null };
     }
-  }, [snapshot, access, coreEvaluationCases, locale, t]);
+  }, [
+    snapshot,
+    access,
+    coreEvaluationCases,
+    externalLearningPlan,
+    locale,
+    t,
+  ]);
   return (
     <TrustIntegrationProvider value={value}>
       {children}

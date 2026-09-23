@@ -14,6 +14,7 @@ import type { PathStrategy } from "../../domain/simulation/planner";
 import { nearestSession } from "../../domain/simulation/simulator";
 import { DatasetUpload } from "./DatasetUpload";
 import { Modal } from "./Modal";
+import { EmployeeExternalLearningSection } from "./external-learning-section";
 import { useEmployeeExplanation } from "./useEmployeeExplanation";
 import {
   explanationStatusLabel,
@@ -64,7 +65,7 @@ export function EmployeeWorkspace() {
   };
 
   const state = useEmployeeStore((s) => s);
-  const { dataset, selectedEmployeeId, simulation } = state;
+  const { dataset, normalizedDataset, selectedEmployeeId, simulation } = state;
   const employee = dataset?.employees.find((e) => e.id === selectedEmployeeId);
   const view = selectedEmployeeId ? state.views[selectedEmployeeId] : null;
   const explanation = useEmployeeExplanation(
@@ -593,6 +594,12 @@ export function EmployeeWorkspace() {
                       </span>
                     </button>
                   )}
+                  {normalizedDataset ? (
+                    <EmployeeExternalLearningSection
+                      dataset={normalizedDataset}
+                      employeeId={employee.id}
+                    />
+                  ) : null}
                   <section
                     className={styles.panel}
                     aria-labelledby="decision-title"
