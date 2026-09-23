@@ -1,0 +1,41 @@
+name: CI
+
+on:
+  push:
+    branches: [main, "feat/**"]
+  pull_request:
+    branches: [main]
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        if: ${{ hashFiles('package.json') != '' }}
+
+      - uses: actions/setup-node@v4
+        if: ${{ hashFiles('package.json') != '' }}
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+
+      - name: Install
+        if: ${{ hashFiles('package.json') != '' }}
+        run: pnpm install --frozen-lockfile
+
+      - name: Typecheck
+        if: ${{ hashFiles('package.json') != '' }}
+        run: pnpm typecheck
+
+      - name: Test
+        if: ${{ hashFiles('package.json') != '' }}
+        run: pnpm test
+
+      - name: Build
+        if: ${{ hashFiles('package.json') != '' }}
+        run: pnpm build
+        env:
+          NEXT_TELEMETRY_DISABLED: "1"

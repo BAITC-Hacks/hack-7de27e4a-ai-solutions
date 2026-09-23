@@ -1,0 +1,11 @@
+services:
+  app:
+    build: .
+    ports:
+      - "3000:3000"
+    environment:
+      # Все переменные опциональны: без ключа приложение работает полностью.
+      LLM_API_KEY: ${LLM_API_KEY:-}
+      LLM_BASE_URL: ${LLM_BASE_URL:-}
+      LLM_MODEL: ${LLM_MODEL:-}
+      LLM_TIMEOUT_MS: ${LLM_TIMEOUT_MS:-8000}
