@@ -22,8 +22,10 @@ Middle Backend Engineer, цель не задана → target = **Backend Engin
 | 7 | Bounded AI | «Браузер отправляет только employee/candidate/completion IDs. Сервер проверяет replay и восстанавливает evidence, модель возвращает ID/citations, а текст строится из подтверждённых фактов.» | кнопка AI-критика, safe fallback status |
 | 8 | What-if | «Digital Twin показывает before/after до изменения профиля.» | readiness и skill changes |
 | 9 | Confirm | «Completion применяет gain/max_level, сохраняется в IndexedDB и мгновенно перестраивает top-рекомендации и beam path.» | toast, новый readiness/top-3; reload сохраняет результат |
-| 10 | `/hr` | «HR видит агрегаты и no-step queue, но не performance leaderboard и не зарплатные решения.» | coverage 91%, gaps, participation, 27 no-step |
-| 11 | `/trust` | «На текущем dataset: 0 eligibility violations, 100% полнота receipt, 100% deterministic rerun, p50/p95 latency и verifier policy.» | 4/4 gates, latency card, fallback mode |
+| 10 | `/hr` | «HR видит агрегаты и no-step queue, но не performance leaderboard и не зарплатные решения.» | coverage, gaps, participation, no-step |
+| 11 | HR Event Builder | «Выбираем пробел и ещё до сохранения видим точный охват. Событие проходит те же eligibility и ranking, а не отдельный demo-алгоритм.» | preview eligible / critical / before → after |
+| 12 | Save → `/employee` | «Сохраняем: прогноз совпал с фактическим пересчётом. Новая рекомендация помечена “Создано HR”, показывает дедлайн и экспортируется в `.ics`.» | equality preview = actual, HR badge, deadline, calendar |
+| 13 | `/trust` | «На текущем dataset: 0 eligibility violations, полнота receipt, deterministic rerun, latency и verifier policy.» | gates, latency card, fallback mode |
 
 ## Правила демонстрации
 

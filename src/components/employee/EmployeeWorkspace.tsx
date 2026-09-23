@@ -2,6 +2,11 @@
 import { useEffect, useState } from "react";
 import { useI18n } from "@/lib/i18n/I18nProvider";
 import {
+  buildActivityCalendar,
+  buildPersonalPlanCalendar,
+  calendarFileName,
+} from "@/domain/calendar";
+import {
   catalogName,
   localizeMessage,
   localizedExplanation,
@@ -22,6 +27,19 @@ import {
   recommendationExplanation,
 } from "./ai-explanation";
 import styles from "./employee.module.css";
+
+function downloadCalendar(content: string, name: string): void {
+  const blob = new Blob([content], { type: "text/calendar;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const anchor = document.createElement("a");
+  anchor.href = url;
+  anchor.download = name;
+  anchor.hidden = true;
+  document.body.append(anchor);
+  anchor.click();
+  anchor.remove();
+  window.setTimeout(() => URL.revokeObjectURL(url), 0);
+}
 
 export function EmployeeWorkspace() {
   const { locale, t, date: dateLabel, number } = useI18n();
@@ -90,11 +108,13 @@ export function EmployeeWorkspace() {
   } | null>(null);
   const [planning, setPlanning] = useState(false);
   const [showExcluded, setShowExcluded] = useState(false);
+  const [calendarError, setCalendarError] = useState<string | null>(null);
   const [dismissedNotice, setDismissedNotice] = useState<string | null>(null);
   const noticeKey = `${state.revision}:${state.notice ?? ""}`;
   useEffect(() => {
     setEvidence(null);
     setShowExcluded(false);
+    setCalendarError(null);
   }, [selectedEmployeeId, state.revision]);
   useEffect(() => {
     const reveal = (hash = window.location.hash) => {
@@ -165,6 +185,68 @@ export function EmployeeWorkspace() {
         setPlanning(false);
       }
     }, 0);
+  };
+  const hrEvent = (activityId: string) =>
+    state.hrCreatedEvents.find((created) => created.event.id === activityId);
+  const exportActivity = (activityId: string) => {
+    const event = normalizedDataset?.eventsById[activityId];
+    if (!event || !normalizedDataset) return;
+    try {
+      const metadata = hrEvent(activityId)?.metadata;
+      downloadCalendar(
+        buildActivityCalendar({
+          activity: event,
+          snapshotDate: normalizedDataset.meta.asOfDate,
+          enrollmentDeadline: metadata?.enrollmentDeadline,
+          calendarName: event.title,
+        }),
+        calendarFileName(event.title),
+      );
+      setCalendarError(null);
+    } catch {
+      setCalendarError(
+        t(
+          "Для этой активности пока нет доступной даты календаря.",
+          "Бұл іс-шара үшін күнтізбеде қолжетімді күн жоқ.",
+          "This activity does not have an available calendar date yet.",
+        ),
+      );
+    }
+  };
+  const exportPersonalPlan = () => {
+    if (!normalizedDataset || !state.path?.steps.length || !view) return;
+    try {
+      downloadCalendar(
+        buildPersonalPlanCalendar({
+          dataset: normalizedDataset,
+          acceptedPathSteps: state.path.steps,
+          recommendedActivityIds: view.recommendations.map(
+            (recommendation) => recommendation.activityId,
+          ),
+          enrollmentDeadlines: Object.fromEntries(
+            state.hrCreatedEvents.map((created) => [
+              created.event.id,
+              created.metadata.enrollmentDeadline,
+            ]),
+          ),
+          calendarName: t(
+            "Мой план Career Quest",
+            "Менің Career Quest жоспарым",
+            "My Career Quest plan",
+          ),
+        }),
+        calendarFileName(`career-quest-${employee?.id ?? "plan"}`),
+      );
+      setCalendarError(null);
+    } catch {
+      setCalendarError(
+        t(
+          "Не удалось собрать календарь плана: проверьте даты сессий.",
+          "Жоспар күнтізбесін құру мүмкін болмады: сессия күндерін тексеріңіз.",
+          "Could not build the plan calendar; check the session dates.",
+        ),
+      );
+    }
   };
   const renderEvidence = (recommendation: Recommendation) => (
     <div className={styles.evidenceBlock}>
@@ -247,6 +329,17 @@ export function EmployeeWorkspace() {
                 onClick={() => setDismissedNotice(noticeKey)}
               >
                 ×
+              </button>
+            </div>
+          )}
+          {calendarError && (
+            <div role="alert" className={styles.error}>
+              <span>{calendarError}</span>
+              <button
+                className={styles.textButton}
+                onClick={() => setCalendarError(null)}
+              >
+                {t(" Закрыть ", " Жабу ", " Close ")}
               </button>
             </div>
           )}
@@ -459,6 +552,7 @@ export function EmployeeWorkspace() {
                     <div className={styles.recommendationList}>
                       {view.recommendations.slice(0, 3).map((rec, index) => {
                         const event = activity(rec.activityId);
+                        const createdByHr = hrEvent(rec.activityId);
                         const session =
                           event && nearestSession(event, dataset!.snapshotDate);
                         return (
@@ -497,10 +591,32 @@ export function EmployeeWorkspace() {
                                       ? t("Онлайн", "Онлайн", "Online")
                                       : t("Очно", "Офлайн", "In person")}
                                   {session ? ` · ${dateLabel(session)}` : ""}
+                                  {createdByHr?.metadata.enrollmentDeadline
+                                    ? t(
+                                        " · запись до {date}",
+                                        " · тіркелу {date} дейін",
+                                        " · enroll by {date}",
+                                        {
+                                          date: dateLabel(
+                                            createdByHr.metadata
+                                              .enrollmentDeadline,
+                                          ),
+                                        },
+                                      )
+                                    : ""}
                                 </span>
                               </div>
                               <h3>{event?.title ?? rec.activityId}</h3>
                               <div className={styles.pills}>
+                                {createdByHr && (
+                                  <span className={styles.hrCreatedPill}>
+                                    {t(
+                                      "Создано HR",
+                                      "HR жасаған",
+                                      "Created by HR",
+                                    )}
+                                  </span>
+                                )}
                                 {Object.entries(rec.expectedGains).map(
                                   ([id, gain]) => (
                                     <span key={id}>
@@ -546,6 +662,22 @@ export function EmployeeWorkspace() {
                                     " Why this? ",
                                   )}
                                 </button>
+                                {normalizedDataset?.eventsById[
+                                  rec.activityId
+                                ] && (
+                                  <button
+                                    className={styles.textButton}
+                                    onClick={() =>
+                                      exportActivity(rec.activityId)
+                                    }
+                                  >
+                                    {t(
+                                      " В календарь .ics ",
+                                      " Күнтізбеге .ics ",
+                                      " Add to calendar .ics ",
+                                    )}
+                                  </button>
+                                )}
                                 {index > 0 && top && (
                                   <details className={styles.inlineDetails}>
                                     <summary>
@@ -916,6 +1048,18 @@ export function EmployeeWorkspace() {
                                         )}
                               </span>
                             </div>
+                            {!!state.path.steps.length && normalizedDataset && (
+                              <button
+                                className={styles.secondaryButton}
+                                onClick={exportPersonalPlan}
+                              >
+                                {t(
+                                  "Добавить план в календарь .ics",
+                                  "Жоспарды күнтізбеге қосу .ics",
+                                  "Add plan to calendar .ics",
+                                )}
+                              </button>
+                            )}
                             <ol className={styles.pathList}>
                               {state.path.steps.map((step, index) => (
                                 <li key={`${step.activityId}-${index}`}>

@@ -1,5 +1,11 @@
 "use client";
-import { useEffect, useMemo, useRef, useState } from "react";
+import {
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ReactNode,
+} from "react";
 import Link from "next/link";
 import { useI18n } from "@/lib/i18n/I18nProvider";
 import { catalogName } from "@/lib/i18n/domain";
@@ -50,7 +56,15 @@ function MetricIcon({
   );
 }
 
-export function HRDashboard({ input }: { input: AnalyticsInput }) {
+export function HRDashboard({
+  input,
+  eventBuilder,
+  onCreateCatalogActivity,
+}: {
+  input: AnalyticsInput;
+  eventBuilder?: ReactNode;
+  onCreateCatalogActivity?: (skillId: string, role?: string) => void;
+}) {
   const { locale, t, number } = useI18n();
   const externalLearningPlan =
     useTrustIntegration()?.externalLearningPlan ?? null;
@@ -303,15 +317,19 @@ export function HRDashboard({ input }: { input: AnalyticsInput }) {
       <button
         className={`${styles.button} ${styles.secondary}`}
         onClick={() =>
-          setBrief({
-            kind: "catalog",
-            skillId: g.skillId,
-            unavailable: g.noAvailableStep,
-            multiple: g.needsMultipleSteps,
-          })
+          onCreateCatalogActivity
+            ? onCreateCatalogActivity(g.skillId, effectiveRole || undefined)
+            : setBrief({
+                kind: "catalog",
+                skillId: g.skillId,
+                unavailable: g.noAvailableStep,
+                multiple: g.needsMultipleSteps,
+              })
         }
       >
-        {t("Проект программы", "Бағдарлама жобасы", "Draft program")}
+        {onCreateCatalogActivity
+          ? t("Создать активность", "Іс-шара жасау", "Create activity")
+          : t("Проект программы", "Бағдарлама жобасы", "Draft program")}
       </button>
     </div>
   );
@@ -830,6 +848,7 @@ export function HRDashboard({ input }: { input: AnalyticsInput }) {
             )}
           </p>
         )}
+        {eventBuilder}
         {!effectiveRole && externalLearningPlan && (
           <HrExternalLearningSection plan={externalLearningPlan} />
         )}
