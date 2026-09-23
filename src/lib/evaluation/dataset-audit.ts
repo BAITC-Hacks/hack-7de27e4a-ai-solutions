@@ -5,7 +5,7 @@ import type { EvaluationCase } from './harness';
 /** Read-only checks for ANY imported dataset. No hardcoded challenge or event IDs. */
 export function createDatasetAuditCases(dataset: NormalizedDataset): EvaluationCase[] {
   return [
-    { id: 'dataset-constraints', name: 'Hard filters и критичные разрывы · исходный импорт', scope: 'core', run: () => {
+    { id: 'dataset-constraints', name: 'Hard filters и критичные разрывы · проверяемое состояние', scope: 'core', run: () => {
       let violations = 0, recommendations = 0, critical = 0, abstainExpected = 0, abstainCorrect = 0;
       const started = performance.now();
       for (const employeeId of Object.keys(dataset.employeesById)) {

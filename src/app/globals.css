@@ -1,0 +1,33 @@
+:root {
+  --cq-ink: #182d27;
+  --cq-muted: #64756e;
+  --cq-line: #dce4dc;
+  --cq-paper: #f5f6f1;
+  --cq-green: #285d46;
+  --cq-sidebar: #183d31;
+  --cq-highlight: #d6f4bd;
+  color-scheme: light;
+}
+* {
+  box-sizing: border-box;
+}
+body {
+  margin: 0;
+  background: var(--cq-paper);
+  color: var(--cq-ink);
+  font-family: Arial, Helvetica, sans-serif;
+}
+button,
+input,
+select {
+  font: inherit;
+}
+:focus-visible {
+  outline: 3px solid #79a741;
+  outline-offset: 4px;
+}
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+}

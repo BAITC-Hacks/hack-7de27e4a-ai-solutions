@@ -1,5 +1,10 @@
 # Employee Digital Twin — handoff Манахнбета
 
+**Финальная интеграция:** общий AppProviders/AppShell подключает Employee, HR и Trust
+к sharedEmployeeStore. AI-объяснения подключены к карточкам. Актуальные 94 теста,
+полная production-сборка с TypeScript и сквозной browser QA описаны в `docs/INTEGRATION.md`;
+они дополняют и заменяют ранние ограничения проверки ниже.
+
 Реализован поток B: `/employee`, импорт четырёх файлов, профиль, Decision Lab,
 evidence drawer, три стратегии планирования, what-if и журнал завершений.
 Модуль подключён к реальным контрактам, импорту и движку A из `main` на коммите

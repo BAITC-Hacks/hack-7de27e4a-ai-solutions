@@ -1,11 +1,11 @@
 .workspace {
-  --ink: #182d27;
-  --muted: #64756e;
-  --line: #dce4dc;
-  --paper: #f5f6f1;
-  --green: #285d46;
+  --ink: var(--cq-ink, #182d27);
+  --muted: var(--cq-muted, #64756e);
+  --line: var(--cq-line, #dce4dc);
+  --paper: var(--cq-paper, #f5f6f1);
+  --green: var(--cq-green, #285d46);
   display: flex;
-  min-height: 100vh;
+  min-height: calc(100vh - 88px);
   background: var(--paper);
   color: var(--ink);
   font-family: Arial, Helvetica, sans-serif;
