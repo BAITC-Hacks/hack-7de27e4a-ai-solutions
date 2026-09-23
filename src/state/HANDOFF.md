@@ -1,148 +1,131 @@
 # Employee Digital Twin — handoff Манахнбета
 
-Реализована зона B: интерфейс сотрудника, upload UX, состояние Zustand, immutable ledger,
-what-if и beam-search planner. Все изменения находятся в каталогах B. Общие типы A,
-scoring, history replay, root layout и package.json проекта не менялись.
+Реализован поток B: `/employee`, импорт четырёх файлов, профиль, Decision Lab,
+evidence drawer, три стратегии планирования, what-if и журнал завершений.
+Модуль подключён к реальным контрактам, импорту и движку A из `main` на коммите
+`0a4b7c26eab1e4fa5087d642dc862c3dc7338087`. Изменения B ограничены его каталогами.
+Корневые настройки, контракты, scoring и исходные данные команды не менялись.
 
-## Текущая граница готовности
+## Запуск
 
-На базовом коммите `52619f058bb6879e7ec5ab257ac151fd8c5c27a9` опубликована командная
-документация, но нет `src/lib/contracts`, `src/domain/data`, `src/domain/recommendation`,
-`data/source` или корневого package.json. Поэтому:
-
-- production route `/employee` честно показывает отсутствие подключения Intelligence;
-- `tests/simulation` содержит отдельный runnable Next.js стенд с явно помеченным **тестовым** адаптером;
-- локальный тестовый E0028 демонстрирует state flow, не является копией фактического датасета;
-- импорт реальной схемы, реальные результаты E0028, интеграция с HR/Trust и общий Docker/build
-  остаются интеграционными проверками после публикации кода A и общего каркаса;
-- нет публичного leaderboard, LLM-запросов, отправки файлов на сервер, OAuth или БД.
-
-Это готовый модуль для подключения, но не утверждение о готовности всей системы к защите.
-
-## Запуск из текущей ветки
-
-Требуется Node 22. Команды выполняются из корня репозитория:
+Из корня репозитория:
 
 ```sh
-npm --prefix tests/simulation ci
-npm --prefix tests/simulation test
-npm --prefix tests/simulation run typecheck
-npm --prefix tests/simulation run build
-npm --prefix tests/simulation run dev
+pnpm install --frozen-lockfile
+pnpm dev
 ```
 
-Открыть http://127.0.0.1:3100. Корень — демонстрационный стенд, `/employee` —
-настоящий route до подключения общего provider. Скрипт генерирует только игнорируемую
-папку `tests/simulation/.standalone`. Корневые файлы команды не создаются и не изменяются.
-Пакеты стенда изолированы; они не выбирают версии зависимостей основного приложения.
+Открыть `http://localhost:3000/employee`, выбрать четыре файла из `data/source`:
+`employees.json`, `events.json`, `skills.json`, `activity_history.csv`.
+Импорт проходит через настоящий `importCareerQuestDataset`, включая Zod-валидацию.
+Файлы читаются в браузере, сетевой загрузки нет. Набор и прогресс живут в памяти
+текущей вкладки; перезагрузка страницы сбрасывает сессию.
 
 ## Для A — Алихана
 
-Единственная граница между B и Intelligence — `src/state/intelligenceAdapter.ts`.
-Это локальный view-port B, **не замена** типов из `@/lib/contracts`.
+`src/state/realIntelligenceAdapter.ts` связывает B с публичным API A:
 
-`createIntelligenceAdapter<TDataset, TResult>()` из `src/state/createIntelligenceAdapter.ts`
-принимает реальные `importCareerQuestDataset()` и `recommendForEmployee()` и типизированные
-mapping-функции. Подставить `NormalizedDataset` и `RecommendationResult` из общих контрактов,
-когда их файлы появятся. В `datasetView`, `employeeView`, `withProgress` адаптировать
-фактические поля единственного нормализованного источника; не копировать формулы A.
+- `importCareerQuestDataset` — проверка и нормализация;
+- `recommendForEmployee` — top-3, все кандидаты, target/gaps, readiness, evidence;
+- `buildEffectiveEmployeeProfile` — исходный history replay;
+- `evaluateEligibility` — допустимость, включая повторяемость событий.
 
-| Метод binding | Что делает |
-| --- | --- |
-| `importCareerQuestDataset` | Уже документированный импорт A: employees/events/skills + activityHistoryCsv |
-| `recommendForEmployee` | Уже документированный ranking A; adapter вызывает top-3 и полный набор кандидатов |
-| `datasetView` | Только имена/даты/каталоги для отображения, без target resolution или replay |
-| `employeeView` | effectiveProfile → effectiveSkills/replay, gapAnalysis → target/readiness/gaps, recommendations → cards/evidence; excluded[] → причины отказа |
-| `withProgress` | Новый derived normalized view для ledger/overlay, без мутации исходника и без двойного replay |
-| `validationIssues` | ValidationIssue A → файл/поле/строка/сообщение для upload UX |
+`createIntelligenceAdapter` — типизированный мост. В B нет копии production scoring,
+target resolution или history replay. `intelligenceAdapter.ts` содержит только типы
+отображения и состояния B, канонические типы импортируются из `@/lib/contracts`.
 
-Для recurring-флага использовать правило/конфигурацию A. Продуктовый B не содержит IDs
-сотрудников или событий. `candidates` обязан содержать все допустимые активности, а не
-только показанные три. Prerequisites и доступность пересчитываются A на каждом шаге поиска.
+`withSessionProgress` создаёт новую версию нормализованного состояния: заменяет вектор
+на уже рассчитанный `after`, добавляет завершения в историю и сдвигает границу replay
+до учтённой даты. Исходник сохраняется неизменным. Это предотвращает двойное начисление
+старой истории и новых gains, сохраняя историю для engagement/eligibility A.
+Для what-if используются временные overlay, в store они не записываются.
 
-`overlay.skills` — **полный эффективный вектор**, заменяющий effective skills, а не добавочный
-gain. `overlay.completedActivityIds` дополняет завершения для фильтрации. Replay оригинальной
-истории выполняет только A. Ledger хранит before/delta/after; повторное применение его
-дельты поверх after запрещено. На confirm B заново проверяет eligibility, вызывает A и
-атомарно обновляет все views. Если recompute упал или не отразил after, ledger не коммитится.
-
-В mapping поля `baseline` использовать результат weakest-skill baseline потока C. До
-его подключения UI показывает честное отсутствие baseline, без выдуманного сравнения.
-`excluded` передаётся из A: UI не придумывает причины исключения.
+Реальный E0028: System Design **2 → 3** после replay EV006, повтор EV006 исключён.
+Текущий движок A ставит первым **Leadership Foundations**: readiness **74% → 78%**.
+После подтверждения первый кандидат — **Kubernetes in Practice**. Иллюстративные
+значения из раннего playbook не подставляются вместо фактического результата A.
 
 ## Для C — Даника и интегратора
 
-Создать **один store** через `createEmployeeStore(realAdapter)` и разместить
-`EmployeeStoreProvider` вокруг Employee, HR и Trust в общем client boundary.
-Сам `/employee` обнаруживает внешний provider и использует его. Локальный provider создаётся
-только если общего ещё нет. Не создавать отдельный store для HR.
+Использовать singleton `sharedEmployeeStore` из `src/state/sharedEmployeeStore.ts`.
+`EmployeeStoreProvider` без параметров подключается к нему, `/employee` также
+использует этот store. Общий provider можно разместить вокруг Employee/HR/Trust.
+Для тестов поддерживается передача отдельного store через props.
 
-Импортировать из `src/state/employeeStore.ts`:
+Селекторы из `src/state/employeeStore.ts`:
 
-- `selectDataset` — read-only UI projection набора;
-- `selectNormalizedSource` — исходный `NormalizedDataset` A (исходник остаётся неизменным);
-- `selectEmployeeViews` — **актуальные** effective skills/readiness/gaps для всех сотрудников;
-- `selectLedger` — подтверждённые completion events;
-- `selectCurrentView` — текущий профиль.
+| Селектор                  | Назначение                                                                                             |
+| ------------------------- | ------------------------------------------------------------------------------------------------------ |
+| `selectNormalizedDataset` | **Текущий** канонический `NormalizedDataset`, включая подтверждённый прогресс; вход HR/Trust analytics |
+| `selectEmployeeViews`     | Актуальные effective skills, readiness и gaps всех сотрудников                                         |
+| `selectLedger`            | Неизменяемый журнал подтверждений before/delta/after                                                   |
+| `selectCurrentView`       | Выбранный профиль                                                                                      |
+| `selectDataset`           | Неизменяемая UI-проекция импортированного набора                                                       |
+| `selectNormalizedSource`  | Исходная версия набора для аудита, без session completions                                             |
 
-Для HR-агрегатов после completion использовать `selectEmployeeViews` и `selectLedger`.
-Расчёт только из `selectNormalizedSource` покажет исходное состояние без новых завершений.
-Подписка через `useEmployeeStore(selector)` либо `store.subscribe` получает атомарное изменение.
+Подписываться через `useEmployeeStore(selector)` под provider либо
+`useStore(sharedEmployeeStore, selector)` из Zustand. HR не должен создавать свой
+store или рассчитывать текущие агрегаты из `selectNormalizedSource`.
+Подтверждение атомарно обновляет ledger, normalizedDataset и все employee views.
+Ошибочный перерасчёт откатывает всю транзакцию. Тест проверяет подписку потребителя HR.
 
-AI badge читает `EmployeeView.explanationStatus`: deterministic / verified-ai / fallback.
-Верификацию ответа и baseline предоставляет C; B не реализует LLM verifier.
-Никакой текст из dataset не интерпретируется как HTML или инструкция модели.
+В `createRealIntelligenceAdapter(baselineProvider)` можно передать baseline C.
+По умолчанию работает явно наивный weakest-skill comparator: минимальный уровень,
+стабильный выбор добровольной активности, с показом причин исключения от A.
+Карточки используют deterministic explanations A, badge отображает `explanationStatus`.
+LLM verifier и страницы HR/Trust относятся к C и этим изменением не реализуются.
 
 ## Алгоритмы B
 
-- `applyGains`: max(0, min(current + gain, max_level, 5) - current); проверка диапазонов и дублей навыка.
-- `simulateStep`: проверка кандидата у A, immutable переход, повторный вызов A с overlay.
-- Planner: глубина ≤4, ширина ≤10, стабильный tie-break по ID, повтор только recurring.
-- Fastest: минимальное число шагов до порога в найденных beam-путях; глобальная оптимальность
+- Gains ограничены `maxLevel` и 5, не снижают текущий уровень; невалидные значения и
+  дубликаты skill отклоняются. Preview не меняет dataset/ledger.
+- Confirm заново проверяет кандидата через A, применяет immutable ledger и rerank.
+  Повторный requestId не начисляет прогресс повторно. Смена сотрудника/импорт отменяют preview.
+- Beam search: глубина ≤4, ширина ≤10, стабильный tie-break по ID; на каждом шаге
+  повторно вызывается A. Повтор разрешён только для recurring-событий по правилам A.
+- Fastest — самый короткий найденный путь до порога; глобальная оптимальность
   ограниченного beam search не гарантируется.
-- Balanced: 70% итоговой readiness + 30% среднего score A с коэффициентом 0.85 за каждый
-  последующий шаг. Это функция выбора пути, она не меняет ranking weights A.
-- Stretch: максимальная readiness среди допустимых найденных путей.
-- План моделирует навыки; календарная совместимость нескольких сессий не утверждается.
-- Ledger идемпотентен по requestId; preview отменяется при смене сотрудника или импорте.
-- Дата состояния — snapshotDate. По умолчанию at — snapshotDate, реальное время можно
-  передать в фабрику store извне для аудита; оно не участвует в scoring или планировании.
+- Balanced — 70% итоговой readiness + 30% среднего score A с discount 0.85 по шагам.
+- Stretch — максимальная итоговая readiness среди найденных допустимых путей.
+- План моделирует рост навыков, не гарантирует совместимость расписаний.
+- «Сегодня» — snapshotDate (`2026-10-01` в исходном наборе). Runtime clock не влияет
+  на scoring или планы. Confirm фиксирует завершение на дате среза; внешний audit clock
+  можно передать фабрике store.
 
 ## Проверки
 
-16 Vitest tests прошли, TypeScript без ошибок, production Next.js сборка стенда успешна.
-В ограниченной Windows-среде Vite пытается выполнить необязательный `net use`; локальная
-совместимость сообщает этому probe «недоступно». Компиляция TS выполняется в процессе,
-тесты — worker threads. Эта настройка среды не меняет продуктовый код и не нужна обычному CI.
+Проверено на полном коде и реальном наборе: **39 tests в 4 файлах прошли**,
+включая 16 unit tests B, 6 интеграционных tests B и 17 tests A. TypeScript без ошибок.
 
-Кейсы: cap, immutability, rerank/HR subscription, double confirm, stale preview, atomic rollback,
-игнорирование ledger ошибочным движком, invalid upload, гонка импортов, no history, no target,
-bounded deterministic planner, completed/in-progress/mandatory exclusion, recurring,
-fastest threshold, no candidates, snapshot sessions и делегирование A через bridge.
+Команды в локальной Windows-среде:
 
-## Короткое сообщение команде
+```text
+node node_modules/typescript/bin/tsc --noEmit                         PASS
+node --require <local-probe-shim> node_modules/vitest/vitest.mjs
+  run --configLoader native --pool=threads                          39 PASS
+```
 
-> A: готов B UI/store/simulation. Подключение через createIntelligenceAdapter; нужны реальные
-> contracts и функции importer/recommendForEmployee. Ledger и overlay передаются отдельными
-> полями, effective skills не нужно повторно проигрывать.
->
-> C: используйте общий EmployeeStoreProvider и selectors selectEmployeeViews/selectLedger.
-> После confirm они обновляются одним действием. Передайте baseline/explanationStatus в
-> view mapping; исходный normalized source не содержит новых session completions.
+Локальный shim отключает только необязательный Vite `net use` probe, который
+блокируется средой. Стандартный `next build` компилирует приложение, но Windows sandbox
+блокирует дочерний TypeScript-процесс (`spawn EPERM`). Сборка с worker threads и отдельно
+выполненным typecheck прошла: Turbopack, prerender `/employee` и остальные страницы.
+Настройки этого локального обхода не входят в репозиторий; обычный CI запускает
+неизменённые `pnpm typecheck`, `pnpm test`, `pnpm build` из корневого workflow.
 
-Сообщение подготовлено для передачи пользователем; автоматически в чаты команды не отправлялось.
+Интеграционные тесты проверяют импорт 200 сотрудников, 60 навыков, 40 событий и
+2743 записей истории; совпадение top-3 с A; replay E0028; повторные подтверждения без
+двойного replay; immutable source; актуальный canonical dataset для HR; три стратегии;
+новый judge employee ID, Lead/no-history; ошибки настоящего Zod importer.
+Unit tests покрывают cap, idempotency, stale preview, atomic rollback, import race,
+нет цели/истории/кандидатов, исключённые/повторяемые события и детерминизм planner.
 
-## Browser QA
+Browser QA на production-сборке: **3 полных прогона** реального E0028:
+profile → evidence → balanced plan → what-if → confirm → rerank.
+Каждый раз readiness 74% → 78%, ровно одна запись ledger, top-1 меняется с
+Leadership Foundations на Kubernetes in Practice. План Balanced: 74% → 83%, 4 шага.
+Ошибок browser console нет. Проверены desktop 1440×1000 и mobile 390×844.
 
-На production-сборке стенда выполнено 3 последовательных прогона:
-profile → evidence → balanced path → what-if → confirm → rerank. Каждый раз:
-System Design 3 → 4, readiness 69% → 81%, один ledger event, завершённая активность
-исчезает из карточек. Проверены no-target, missing-history, excluded reasons и invalid
-four-file upload (предыдущий рабочий dataset сохраняется). Console errors не обнаружены.
-Проверены viewport 1440×1000 и 390×844; горизонтального переполнения на mobile нет.
-Все значения в этом QA относятся к синтетическому fixture, не к реальному датасету.
-
-## Файлы изменений
+## Изменённые файлы
 
 ```text
 src/app/employee/page.tsx
@@ -155,14 +138,27 @@ src/domain/simulation/planner.ts
 src/domain/simulation/ledger.ts
 src/state/intelligenceAdapter.ts
 src/state/createIntelligenceAdapter.ts
+src/state/realIntelligenceAdapter.ts
+src/state/sharedEmployeeStore.ts
 src/state/employeeStore.ts
 src/state/EmployeeStoreProvider.tsx
 src/state/HANDOFF.md
 tests/simulation/.gitignore
 tests/simulation/fixture.ts
 tests/simulation/simulation.test.ts
-tests/simulation/package.json
-tests/simulation/package-lock.json
-tests/simulation/prepare-standalone.mjs
-tests/simulation/vitest.config.mjs
+tests/simulation/real-data.test.ts
 ```
+
+Временный отдельный стенд ранней версии удалён: приложение использует корневые
+package.json, lockfile, Next и Vitest команды общего проекта.
+
+## Короткое сообщение команде
+
+> A: B подключён к вашему importer/recommender, реальный E0028 и новые IDs проверены.
+> Ranking/replay A не менялись. Граница интеграции — realIntelligenceAdapter.
+>
+> C: импортируйте sharedEmployeeStore и selectNormalizedDataset для analytics;
+> selectEmployeeViews/selectLedger обновляются вместе после confirm. Общий provider
+> использует этот же singleton. Baseline можно передать в createRealIntelligenceAdapter.
+
+Сообщение предназначено для передачи пользователем; в чаты команды не отправлялось.

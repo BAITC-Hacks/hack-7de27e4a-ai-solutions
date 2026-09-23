@@ -68,7 +68,14 @@ export function simulateStep(
   const completedActivityIds = [
     ...new Set([...beforeView.completedActivityIds, activityId]),
   ];
-  const overlay = { skills: transition.after, completedActivityIds };
+  const overlay = {
+    skills: transition.after,
+    completedActivityIds,
+    simulatedActivityIds: [
+      ...(input.overlay?.simulatedActivityIds ?? []),
+      activityId,
+    ],
+  };
   const afterView = adapter.evaluate({ ...input, overlay });
   return { activityId, ...transition, beforeView, afterView, overlay };
 }

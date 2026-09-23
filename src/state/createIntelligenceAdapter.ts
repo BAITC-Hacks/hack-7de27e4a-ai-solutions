@@ -6,9 +6,9 @@ import type {
   IntelligenceAdapter,
 } from "./intelligenceAdapter";
 
-/** The documented A API is injected, so this module can build before A publishes its files.
- * TDataset and TResult should be A's NormalizedDataset and RecommendationResult.
- * Mapping functions are the ONLY place to adapt A's actual field names once they exist.
+/** Typed bridge between A's importer/recommender and B's display projection.
+ * Production binds A's NormalizedDataset and RecommendationResult in realIntelligenceAdapter.
+ * Mapping functions adapt field names without copying the ranking or replay algorithms.
  */
 export interface IntelligenceBindings<TDataset, TResult> {
   importCareerQuestDataset: (files: {

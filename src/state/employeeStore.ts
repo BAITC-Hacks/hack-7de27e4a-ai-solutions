@@ -1,4 +1,5 @@
 import { createStore } from "zustand/vanilla";
+import type { NormalizedDataset } from "@/lib/contracts";
 import {
   adapterUnavailable,
   type Dataset,
@@ -27,6 +28,7 @@ type Preview = Readonly<{
 }>;
 export type EmployeeState = {
   dataset: Dataset | null;
+  normalizedDataset: NormalizedDataset | null;
   selectedEmployeeId: string | null;
   ledger: readonly LedgerEvent[];
   views: Readonly<Record<string, EmployeeView>>;
@@ -70,6 +72,7 @@ export function createEmployeeStore(
     );
   return createStore<EmployeeState>((set, get) => ({
     dataset: null,
+    normalizedDataset: null,
     selectedEmployeeId: null,
     ledger: [],
     views: {},
@@ -93,6 +96,10 @@ export function createEmployeeStore(
         generation++;
         set({
           views,
+          normalizedDataset:
+            state.dataset && adapter.normalizedState
+              ? freezeDeep(adapter.normalizedState(state.dataset, state.ledger))
+              : null,
           adapterReady: true,
           simulation: null,
           path: null,
@@ -112,6 +119,9 @@ export function createEmployeeStore(
         const views = evaluateAll(dataset, []);
         set({
           dataset,
+          normalizedDataset: adapter.normalizedState
+            ? freezeDeep(adapter.normalizedState(dataset, []))
+            : null,
           views,
           selectedEmployeeId: dataset.employees[0]?.id ?? null,
           ledger: freezeDeep([]),
@@ -261,6 +271,9 @@ export function createEmployeeStore(
           );
         set({
           ledger,
+          normalizedDataset: adapter.normalizedState
+            ? freezeDeep(adapter.normalizedState(state.dataset, ledger))
+            : null,
           views,
           simulation: null,
           path: null,
@@ -307,6 +320,9 @@ export function createEmployeeStore(
 export type EmployeeStore = ReturnType<typeof createEmployeeStore>;
 /** Selectors for C: subscribe to this SAME store instance, not a second demo dataset. */
 export const selectDataset = (state: EmployeeState) => state.dataset;
+/** The shared A-contract dataset with committed progress, for direct HR/Trust engine calls. */
+export const selectNormalizedDataset = (state: EmployeeState) =>
+  state.normalizedDataset;
 /** Original imported A payload, when using createIntelligenceAdapter. Display fields are derived views. */
 export const selectNormalizedSource = (state: EmployeeState) =>
   state.dataset?.source ?? null;

@@ -1,4 +1,5 @@
-/** B-owned integration port. Map A's approved contracts here; do not change A's types. */
+import type { NormalizedDataset } from "@/lib/contracts";
+/** B-owned display projection of A's contracts; original normalized state stays in source. */
 export type SkillLevels = Readonly<Record<string, number>>;
 export type Language = "ru" | "kk" | "en";
 export type Activity = Readonly<{
@@ -92,6 +93,7 @@ export type LedgerEvent = Readonly<{
 export type Overlay = Readonly<{
   skills: SkillLevels;
   completedActivityIds: readonly string[];
+  simulatedActivityIds?: readonly string[];
 }>;
 export type EvaluationInput = Readonly<{
   dataset: Dataset;
@@ -113,6 +115,10 @@ export type ImportResult =
   | { ok: true; dataset: Dataset; issues: readonly ImportIssue[] }
   | { ok: false; issues: readonly ImportIssue[] };
 export interface IntelligenceAdapter {
+  normalizedState?: (
+    dataset: Dataset,
+    ledger: readonly LedgerEvent[],
+  ) => NormalizedDataset;
   /** Owns parsing, aliases, schemas, reference validation and the exact v1.0 mapping. */
   importFiles(files: UploadSources): Promise<ImportResult>;
   /** Pure/synchronous. Owns target, history replay, gaps, eligibility, ranking and evidence.
