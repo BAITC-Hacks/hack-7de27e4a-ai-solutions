@@ -5,6 +5,7 @@ import { requestFixture } from "./fixtures";
 
 let POST: typeof import("../../src/app/api/ai/explain/route").POST;
 beforeEach(async () => {
+  vi.stubEnv("OPENAI_API_KEY", "");
   vi.resetModules();
   ({ POST } = await import("../../src/app/api/ai/explain/route"));
 });

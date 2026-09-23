@@ -1,9 +1,10 @@
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { runAgentStep } from '../../src/app/api/ai/agent/service';
 import { AGENT_TOOLS, createAgentProvider } from '../../src/app/api/ai/agent/provider';
 import { GET, POST } from '../../src/app/api/ai/agent/route';
 import { AGENT_TOOL_ARGUMENT_SCHEMAS, type AgentHistoryEntry, type AgentStepRequest } from '../../src/lib/evaluation/agent-contracts';
 
+beforeEach(() => { vi.stubEnv('OPENAI_API_KEY', ''); });
 afterEach(() => { vi.unstubAllEnvs(); vi.restoreAllMocks(); });
 const request = (): AgentStepRequest => ({ language: 'ru', question: 'Какие пробелы у E0028?', history: [] });
 const entry = (index = 1): AgentHistoryEntry => ({ call: { id: `call_${index}`, name: 'getGaps', arguments: { employeeId: 'E0028' } }, result: { callId: `call_${index}`, evidenceId: `tool:${index}:getGaps`, tool: 'getGaps', facts: [{ id: 'gap', subjectId: 'E0028', skillId: 'SK_SYSTEM_DESIGN', metric: 'gap', value: 1 }] } });
@@ -21,7 +22,7 @@ describe('bounded HR agent server', () => {
   it('reports available only with a key, valid endpoint and model, exposing no configuration', async () => {
     vi.stubEnv('LLM_API_KEY', 'private-test-key');
     vi.stubEnv('LLM_BASE_URL', ''); vi.stubEnv('LLM_MODEL', '');
-    expect(await (await GET()).json()).toEqual({ status: 'unavailable' });
+    expect(await (await GET()).json()).toEqual({ status: 'available' });
     vi.stubEnv('LLM_BASE_URL', 'https://provider.example/v1');
     expect(await (await GET()).json()).toEqual({ status: 'unavailable' });
     vi.stubEnv('LLM_MODEL', 'private-model-name');

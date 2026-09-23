@@ -4,8 +4,10 @@ import { applyActivityCompletion } from "@/domain/simulation";
 import {
   buildCriticRequest,
   criticApiRequestSchema,
+  deterministicCriticFallback,
   runBoundedCritic,
 } from "@/lib/evaluation/critic";
+import { readProviderConfig } from "../provider-config";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -37,11 +39,6 @@ function hasAllowedOrigin(request: Request): boolean {
   } catch {
     return false;
   }
-}
-
-function optionalEnvironmentValue(value: string | undefined): string | undefined {
-  const normalized = value?.trim();
-  return normalized ? normalized : undefined;
 }
 
 function configuredTimeout(value: string | undefined): number {
@@ -219,10 +216,14 @@ export async function POST(request: Request): Promise<Response> {
       selected.filter((recommendation) => recommendation !== undefined),
       parsed.data.language,
     );
+    const config = readProviderConfig();
+    if (config.apiKey && !config.model) {
+      return json(deterministicCriticFallback(criticRequest, "blocked", ["PROVIDER_CONFIG_INVALID"]));
+    }
     const result = await runBoundedCritic(criticRequest, {
-      apiKey: optionalEnvironmentValue(process.env.LLM_API_KEY),
-      endpoint: optionalEnvironmentValue(process.env.LLM_BASE_URL),
-      model: optionalEnvironmentValue(process.env.LLM_MODEL),
+      apiKey: config.apiKey,
+      endpoint: config.baseUrl,
+      model: config.model,
       timeoutMs: configuredTimeout(process.env.LLM_TIMEOUT_MS),
     });
 
