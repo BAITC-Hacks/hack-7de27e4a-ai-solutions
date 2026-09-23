@@ -4,6 +4,12 @@
 > результат, ownership и запрет на несогласованные изменения.
 > Перед вставкой дополнить актуальным commit SHA.
 
+> **Статус 2026-09-23:** ниже сохранены исходные задания потоков. Текущая интеграция
+> определена решением 18 и `docs/INTEGRATION.md`: RU/KK/EN UI, AppProviders/sharedEmployeeStore,
+> in-memory ledger, `/` и `/demo` → `/employee`. UI вызывает bounded-evidence
+> `/api/ai/explain` на языке общего переключателя; IDs-only `/api/ai/review` сохранён
+> отдельным модулем. Указания ниже про endpoint и `preferred_language` относятся к раннему плану.
+
 ## 0. Универсальный префикс (в каждую задачу)
 
 ```

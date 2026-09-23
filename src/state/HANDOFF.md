@@ -1,9 +1,17 @@
 # Employee Digital Twin — handoff Манахнбета
 
-**Финальная интеграция:** общий AppProviders/AppShell подключает Employee, HR и Trust
-к sharedEmployeeStore. AI-объяснения подключены к карточкам. Актуальные 112 тестов,
-полная production-сборка с TypeScript и сквозной browser QA описаны в `docs/INTEGRATION.md`;
-они дополняют и заменяют ранние ограничения проверки ниже.
+**Текущая интеграция поверх `main ef90bc9` (2026-09-23):** общий AppProviders/AppShell
+подключает локализованные Employee, HR и Trust к `sharedEmployeeStore`. `/` и `/demo`
+перенаправляют на `/employee`; ledger хранится в памяти вкладки. AI-объяснения карточек
+и Trust используют `/api/ai/explain` с ограниченным evidence и языком интерфейса.
+IDs-only `/api/ai/review` и новые модули main сохранены; `CareerQuestStore`, IndexedDB,
+private Employee projection и XP не подключены к активным страницам.
+
+Итог объединения: **168/168 тестов в 21 файле, production-сборка с полной проверкой
+TypeScript — PASS**. Browser smoke подтвердил общий профиль, HR CTA, RU/KK/EN и
+no-key объяснение; ошибок console нет. Подробности: `docs/INTEGRATION.md`.
+117 тестов прежнего UI и 152 теста PR #6 — исторические результаты; ранние проверки ниже
+также относятся к первоначальному потоку B.
 
 Реализован поток B: `/employee`, импорт четырёх файлов, профиль, Decision Lab,
 evidence drawer, три стратегии планирования, what-if и журнал завершений.
@@ -54,7 +62,7 @@ target resolution или history replay. `intelligenceAdapter.ts` содержи
 
 Использовать singleton `sharedEmployeeStore` из `src/state/sharedEmployeeStore.ts`.
 `EmployeeStoreProvider` без параметров подключается к нему, `/employee` также
-использует этот store. Общий provider можно разместить вокруг Employee/HR/Trust.
+использует этот store. Общий provider уже установлен в AppProviders вокруг Employee/HR/Trust.
 Для тестов поддерживается передача отдельного store через props.
 
 Селекторы из `src/state/employeeStore.ts`:
@@ -78,7 +86,8 @@ store или рассчитывать текущие агрегаты из `sele
 По умолчанию работает явно наивный weakest-skill comparator: минимальный уровень,
 стабильный выбор добровольной активности, с показом причин исключения от A.
 Карточки используют deterministic explanations A, badge отображает `explanationStatus`.
-LLM verifier и страницы HR/Trust относятся к C и этим изменением не реализуются.
+LLM verifier и страницы HR/Trust относятся к C и подключены через
+`EmployeeStoreTrustBridge`; общие mode-кнопки не пересоздают store.
 
 ## Алгоритмы B
 
@@ -97,7 +106,7 @@ LLM verifier и страницы HR/Trust относятся к C и этим и
   на scoring или планы. Confirm фиксирует завершение на дате среза; внешний audit clock
   можно передать фабрике store.
 
-## Проверки
+## Исторические проверки потока B до общей интеграции
 
 Проверено на полном коде и реальном наборе: **39 tests в 4 файлах прошли**,
 включая 16 unit tests B, 6 интеграционных tests B и 17 tests A. TypeScript без ошибок.

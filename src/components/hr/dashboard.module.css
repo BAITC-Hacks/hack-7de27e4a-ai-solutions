@@ -81,6 +81,8 @@
   letter-spacing: 0.2px;
 }
 .page select {
+  appearance: none;
+  -webkit-appearance: none;
   width: 100%;
   min-height: 43px;
   padding: 10px 34px 10px 14px;
@@ -93,6 +95,27 @@
     system-ui,
     sans-serif;
   cursor: pointer;
+}
+.selectControl {
+  position: relative;
+  display: block;
+  min-width: 0;
+  color: #62776a;
+}
+.selectControl::after {
+  content: "";
+  position: absolute;
+  width: 7px;
+  height: 7px;
+  border-right: 1.8px solid currentColor;
+  border-bottom: 1.8px solid currentColor;
+  right: 16px;
+  top: 50%;
+  transform: translateY(-50%) rotate(45deg);
+  pointer-events: none;
+}
+.selectControl:has(select:open)::after {
+  transform: translateY(-50%) rotate(-135deg);
 }
 .badge {
   display: inline-flex;
@@ -433,10 +456,35 @@
   padding-bottom: 0;
 }
 .page summary {
+  position: relative;
+  display: block;
+  padding-right: 24px;
+  list-style: none;
   cursor: pointer;
   color: #536b5e;
   font-size: 12px;
   line-height: 1.6;
+}
+.page summary::marker {
+  content: "";
+}
+.page summary::-webkit-details-marker {
+  display: none;
+}
+.page details > summary::after {
+  content: "";
+  position: absolute;
+  width: 7px;
+  height: 7px;
+  border-right: 1.8px solid currentColor;
+  border-bottom: 1.8px solid currentColor;
+  right: 4px;
+  top: 50%;
+  transform: translateY(-50%) rotate(45deg);
+  pointer-events: none;
+}
+.page details[open] > summary::after {
+  transform: translateY(-50%) rotate(-135deg);
 }
 .page summary:hover {
   color: var(--green);
@@ -501,6 +549,16 @@
 .emptyIcon svg {
   width: 27px;
   height: 27px;
+}
+.gateActions {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+.gateActions .button {
+  min-height: 44px;
 }
 .emptyInline {
   border: 1px dashed #dce7e0;
@@ -639,19 +697,8 @@
   gap: 10px;
   list-style: none;
 }
-.resultItem summary::-webkit-details-marker {
-  display: none;
-}
-.resultItem summary::after {
-  content: "+";
-  margin-left: auto;
-  color: #8ba494;
-  font-size: 16px;
-}
-.resultItem[open] summary::after {
-  content: "−";
-}
 .resultItem summary > b {
+  min-width: 0;
   font-size: 12px;
   font-weight: 550;
   color: var(--ink);
@@ -752,15 +799,11 @@
   line-height: 1.65;
 }
 .disclosure > summary {
-  width: fit-content;
+  width: 100%;
   max-width: 100%;
   color: #62776a;
   font-size: 11px;
   font-weight: 500;
-}
-.disclosure > summary::marker {
-  color: #96ada0;
-  font-size: 9px;
 }
 .disclosure[open] > summary {
   color: var(--green);

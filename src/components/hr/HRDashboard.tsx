@@ -318,20 +318,22 @@ export function HRDashboard({ input }: { input: AnalyticsInput }) {
         </div>
         <label className={styles.filter}>
           {t("Целевая роль", "Мақсатты рөл", "Target role")}
-          <select
-            aria-label={t("Целевая роль", "Мақсатты рөл", "Target role")}
-            value={effectiveRole}
-            onChange={(event) => setRole(event.target.value)}
-          >
-            <option value="">
-              {t("Все роли", "Барлық рөлдер", "All roles")}
-            </option>
-            {roles.map((item) => (
-              <option key={item} value={item}>
-                {catalogName(item, locale)}
+          <span className={styles.selectControl}>
+            <select
+              aria-label={t("Целевая роль", "Мақсатты рөл", "Target role")}
+              value={effectiveRole}
+              onChange={(event) => setRole(event.target.value)}
+            >
+              <option value="">
+                {t("Все роли", "Барлық рөлдер", "All roles")}
               </option>
-            ))}
-          </select>
+              {roles.map((item) => (
+                <option key={item} value={item}>
+                  {catalogName(item, locale)}
+                </option>
+              ))}
+            </select>
+          </span>
         </label>
       </div>
       <div className={styles.stats}>

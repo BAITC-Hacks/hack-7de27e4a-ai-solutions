@@ -1,14 +1,6 @@
-import { CareerDashboard } from "@/components/employee/career-dashboard";
-import { loadBundledDataset } from "@/domain/data/server";
+import { redirect } from "next/navigation";
 
-export default async function DemoLabPage() {
-  const dataset = await loadBundledDataset();
-
-  return (
-    <CareerDashboard
-      initialDataset={dataset}
-      accessMode="demo"
-      allowDatasetImport
-    />
-  );
+/** All entry points use the approved, localized workspace and its shared session. */
+export default function DemoPage() {
+  redirect("/employee");
 }
