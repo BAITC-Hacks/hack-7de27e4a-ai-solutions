@@ -1005,3 +1005,46 @@
     width: 100%;
   }
 }
+
+.dropoutList {
+  max-height: 34rem;
+  overflow: auto;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
+  padding: 0 8px;
+  margin-top: 16px;
+}
+.dropoutRow {
+  border-top: 1px solid var(--line);
+  padding: 10px 0;
+  overflow-wrap: anywhere;
+}
+.dropoutSummary {
+  cursor: pointer;
+  line-height: 1.7;
+  padding: 4px 0;
+}
+.dropoutSummaryTitle {
+  font-weight: bold;
+  margin-right: 14px;
+}
+.dropoutSummary .badge {
+  margin: 4px 0;
+}
+.dropoutList:focus-visible,
+.dropoutSummary:focus-visible {
+  outline: 3px solid #cf9c3d;
+  outline-offset: 2px;
+}
+
+.agentPanel { border-top: 3px solid #246652; }
+.agentQuestion { display: block; width: 100%; box-sizing: border-box; resize: vertical; margin: 10px 0; padding: 14px; border: 1px solid #c9d7cc; border-radius: 12px; font: inherit; color: #20382f; background: #fff; }
+.agentQuestion:focus-visible { outline: 2px solid #246652; outline-offset: 2px; }
+.agentControls, .agentSuggestions { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+.agentSuggestions { margin: 14px 0; }
+.agentSuggestions button { white-space: normal; text-align: left; }
+.agentAnswer { margin-top: 18px; padding: 16px; border-radius: 12px; background: #f0f6f0; overflow-wrap: anywhere; }
+.agentText { white-space: pre-wrap; line-height: 1.7; }
+.agentStep { padding: 10px 0; border-top: 1px solid #d6e1d7; }
+.agentStep summary { cursor: pointer; }
+.agentStep pre { max-height: 320px; overflow: auto; padding: 12px; background: #f3f5f3; border-radius: 8px; font-size: 12px; }

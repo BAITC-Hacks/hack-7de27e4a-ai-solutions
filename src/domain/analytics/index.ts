@@ -13,3 +13,5 @@ export {
   type SkillGapAggregate,
   type CatalogGap as HrCatalogGap,
 } from "./hr-analytics";
+
+export * from './dropout';

@@ -8,6 +8,8 @@ import type { AnalyticsInput, CatalogGap } from "../../domain/analytics/types";
 import { useTrustIntegration } from "../trust/integration";
 import { HrExternalLearningSection } from "./external-learning-section";
 import styles from "./dashboard.module.css";
+import { HRAgentPanel } from "./HRAgentPanel";
+import { DropoutPanel } from "./DropoutPanel";
 
 type BriefSpec =
   | { kind: "catalog"; skillId: string; unavailable: number; multiple: number }
@@ -205,6 +207,7 @@ export function HRDashboard({ input }: { input: AnalyticsInput }) {
     );
     const ids = new Set(employees.map((e) => e.employeeId));
     return {
+      ...input,
       employees,
       history: input.history.filter((row) => ids.has(row.employeeId)),
     };
@@ -462,6 +465,8 @@ export function HRDashboard({ input }: { input: AnalyticsInput }) {
           </p>
         </details>
       </div>
+      <HRAgentPanel />
+      <DropoutPanel input={filtered} />
       <div className={styles.grid}>
         <div>
           <section className={styles.panel}>

@@ -17,10 +17,10 @@ export function projectCoreHistory(dataset: NormalizedDataset): Participation[] 
   return dataset.history.map(row => {
     const event = dataset.eventsById[row.eventId];
     if (!event) throw new Error('Unknown event in normalized history');
-    return { employeeId: row.employeeId, activityId: row.eventId, status: row.status, assignedBy: row.assignedBy, mandatory: event.mandatory };
+    return { employeeId: row.employeeId, activityId: row.eventId, status: row.status, assignedBy: row.assignedBy, mandatory: event.mandatory, date: row.date, historyId: row.id };
   });
 }
 /** For imported snapshots/evaluations. Live HR after completion must use projectEmployeeStore instead. */
 export function projectCoreAnalytics(dataset: NormalizedDataset): AnalyticsInput {
-  return { employees: Object.keys(dataset.employeesById).sort().map(id => projectCoreEmployee(dataset, id)), history: projectCoreHistory(dataset) };
+  return { employees: Object.keys(dataset.employeesById).sort().map(id => projectCoreEmployee(dataset, id)), history: projectCoreHistory(dataset), snapshotDate: dataset.meta.asOfDate };
 }

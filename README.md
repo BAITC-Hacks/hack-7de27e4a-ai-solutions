@@ -211,3 +211,73 @@ GitHub Actions заблокирован из-за billing аккаунта, до
 
 Данные синтетические, предоставлены организаторами. Реальные персональные данные не
 используются.
+
+## PR #7 — integration verification (2026-09-23)
+
+Merged main `f287b40` into the Danik branch, preserving the localized main UI, adding the HR agent and participation panels, and retaining both analytics export sets. The new panels use RU/KK/EN. Shared contracts, recommendation, simulation, and Employee files match main.
+
+Standard commands on Windows (Node 24.21.0, pnpm 11.19.0): `pnpm install` exit 0; `pnpm typecheck` exit 0; `pnpm test` exit 1; `pnpm build` exit 1. The current environment denies piped child processes (`spawn EPERM`), also reproduced with official Node 22.23.2. No alternate test configuration or build configuration was used for these checks. **The standard test/build gates remain unverified; these failures are not successful reproducibility evidence.**
+
+CI now has a manual `workflow_dispatch` trigger, implementing the billing-related team decision already recorded in `docs/DECISIONS.md` (decision 8). GitHub reports previous jobs failing before runner startup (`runner_id=0`, `steps=[]`); logs are unavailable. Billing is documented by the team, but the current billing diagnostic could not independently be retrieved through the connector. Manual-only CI does not constitute a passing check.
+
+<details><summary>Actual pnpm test output</summary>
+
+```text
+$ vitest run
+failed to load config from C:\Users\Daniyar\Documents\Codex\2026-09-23\github-plugin-github-openai-curated-remote\work\pr7-integration\vitest.config.ts
+
+⎯⎯⎯⎯⎯⎯⎯ Startup Error ⎯⎯⎯⎯⎯⎯⎯⎯
+Error: Build failed with 1 error:
+
+[plugin externalize-deps]
+Error: spawn EPERM
+    at ChildProcess.spawn (node:internal/child_process:458:11)
+    at spawn (node:child_process:813:9)
+    at Object.execFile (node:child_process:349:17)
+    at exec (node:child_process:236:25)
+    at optimizeSafeRealPathSync (file:///C:/Users/Daniyar/Documents/Codex/2026-09-23/github-plugin-github-openai-curated-remote/work/pr7-integration/node_modules/.pnpm/vite@8.3.0_@types+node@26.6.2/node_modules/vite/dist/node/chunks/node.js:2438:2)
+    at windowsSafeRealPathSync (file:///C:/Users/Daniyar/Documents/Codex/2026-09-23/github-plugin-github-openai-curated-remote/work/pr7-integration/node_modules/.pnpm/vite@8.3.0_@types+node@26.6.2/node_modules/vite/dist/node/chunks/node.js:2424:3)
+    at getRealPath (file:///C:/Users/Daniyar/Documents/Codex/2026-09-23/github-plugin-github-openai-curated-remote/work/pr7-integration/node_modules/.pnpm/vite@8.3.0_@types+node@26.6.2/node_modules/vite/dist/node/chunks/node.js:28972:36)
+    at tryResolveRealFileOrType (file:///C:/Users/Daniyar/Documents/Codex/2026-09-23/github-plugin-github-openai-curated-remote/work/pr7-integration/node_modules/.pnpm/vite@8.3.0_@types+node@26.6.2/node_modules/vite/dist/node/chunks/node.js:28966:9)
+    at tryCleanFsResolve (file:///C:/Users/Daniyar/Documents/Codex/2026-09-23/github-plugin-github-openai-curated-remote/work/pr7-integration/node_modules/.pnpm/vite@8.3.0_@types+node@26.6.2/node_modules/vite/dist/node/chunks/node.js:28715:21)
+    at tryFsResolve (file:///C:/Users/Daniyar/Documents/Codex/2026-09-23/github-plugin-github-openai-curated-remote/work/pr7-integration/node_modules/.pnpm/vite@8.3.0_@types+node@26.6.2/node_modules/vite/dist/node/chunks/node.js:28708:14)
+    at aggregateBindingErrorsIntoJsError (file:///C:/Users/Daniyar/Documents/Codex/2026-09-23/github-plugin-github-openai-curated-remote/work/pr7-integration/node_modules/.pnpm/rolldown@1.2.9/node_modules/rolldown/dist/shared/error-CGhV1ebk.mjs:48:18)
+    at unwrapBindingResult (file:///C:/Users/Daniyar/Documents/Codex/2026-09-23/github-plugin-github-openai-curated-remote/work/pr7-integration/node_modules/.pnpm/rolldown@1.2.9/node_modules/rolldown/dist/shared/error-CGhV1ebk.mjs:18:128)
+    at #build (file:///C:/Users/Daniyar/Documents/Codex/2026-09-23/github-plugin-github-openai-curated-remote/work/pr7-integration/node_modules/.pnpm/rolldown@1.2.9/node_modules/rolldown/dist/shared/rolldown-Ld3ZGGCt.mjs:133:34)
+    at async bundleConfigFile (file:///C:/Users/Daniyar/Documents/Codex/2026-09-23/github-plugin-github-openai-curated-remote/work/pr7-integration/node_modules/.pnpm/vite@8.3.0_@types+node@26.6.2/node_modules/vite/dist/node/chunks/node.js:37448:12)
+    at async bundleAndLoadConfigFile (file:///C:/Users/Daniyar/Documents/Codex/2026-09-23/github-plugin-github-openai-curated-remote/work/pr7-integration/node_modules/.pnpm/vite@8.3.0_@types+node@26.6.2/node_modules/vite/dist/node/chunks/node.js:37344:18)
+    at async loadConfigFromFile (file:///C:/Users/Daniyar/Documents/Codex/2026-09-23/github-plugin-github-openai-curated-remote/work/pr7-integration/node_modules/.pnpm/vite@8.3.0_@types+node@26.6.2/node_modules/vite/dist/node/chunks/node.js:37305:42)
+    at async resolveConfig (file:///C:/Users/Daniyar/Documents/Codex/2026-09-23/github-plugin-github-openai-curated-remote/work/pr7-integration/node_modules/.pnpm/vite@8.3.0_@types+node@26.6.2/node_modules/vite/dist/node/chunks/node.js:36906:22)
+    at async resolveConfig$1 (file:///C:/Users/Daniyar/Documents/Codex/2026-09-23/github-plugin-github-openai-curated-remote/work/pr7-integration/node_modules/.pnpm/vitest@5.0.1_@types+node@26_7c4363941a84df12a3c6620a81dfa721/node_modules/vitest/dist/chunks/index.DzobfTyw.js:14777:25)
+    at async createVitest (file:///C:/Users/Daniyar/Documents/Codex/2026-09-23/github-plugin-github-openai-curated-remote/work/pr7-integration/node_modules/.pnpm/vitest@5.0.1_@types+node@26_7c4363941a84df12a3c6620a81dfa721/node_modules/vitest/dist/chunks/cli-api.DcLieX4F.js:26:17)
+    at async prepareVitest (file:///C:/Users/Daniyar/Documents/Codex/2026-09-23/github-plugin-github-openai-curated-remote/work/pr7-integration/node_modules/.pnpm/vitest@5.0.1_@types+node@26_7c4363941a84df12a3c6620a81dfa721/node_modules/vitest/dist/chunks/cli-api.DcLieX4F.js:421:14) {
+  errors: [Getter/Setter]
+}
+
+
+
+[ELIFECYCLE] Test failed. See above for more details.
+EXIT_CODE=1
+```
+
+</details>
+
+<details><summary>Actual pnpm build output</summary>
+
+```text
+$ next build
+▲ Next.js 16.3.5 (Turbopack)
+⚠ Warning: Next.js ignored package-lock.json in C:\Users\Daniyar\Documents\Codex\2026-09-23\github-plugin-github-openai-curated-remote\work because it is outside the current Git repository (C:\Users\Daniyar\Documents\Codex\2026-09-23\github-plugin-github-openai-curated-remote\work\pr7-integration).
+ To use this directory, set `turbopack.root` in your Next.js config.
+
+✓ Running next.config.ts took 52ms
+
+  Creating an optimized production build ...
+✓ Compiled successfully in 6.1s
+  Running TypeScript ...
+spawn EPERM
+[ELIFECYCLE] Command failed with exit code 1.
+EXIT_CODE=1
+```
+
+</details>
