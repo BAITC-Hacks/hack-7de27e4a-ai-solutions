@@ -7,7 +7,10 @@ import {
 } from "@/domain/catalog";
 import { localizeMessage } from "@/lib/i18n/domain";
 import type { Grade, NormalizedDataset } from "@/lib/contracts";
-import { createEmployeeStore } from "@/state/employeeStore";
+import {
+  createEmployeeStore,
+  selectDatasetGeneration,
+} from "@/state/employeeStore";
 import {
   createRealIntelligenceAdapter,
   projectDataset,
@@ -61,6 +64,34 @@ function usefulDraft(
 }
 
 describe("HR-created event store overlay", () => {
+  it("changes the event-builder reset key only after a successful dataset reload", () => {
+    const { source, store } = readyStore();
+    const initialGeneration = selectDatasetGeneration(store.getState());
+    expect(initialGeneration).toBe(1);
+
+    const top = store.getState().views[store.getState().selectedEmployeeId!]
+      .recommendations[0];
+    expect(top).toBeDefined();
+    store.getState().previewActivity(top.activityId);
+    const requestId = store.getState().simulation!.requestId;
+    expect(store.getState().confirmCompletion(requestId)).toBe(true);
+    expect(selectDatasetGeneration(store.getState())).toBe(initialGeneration);
+
+    expect(store.getState().addHrEvent(usefulDraft(store.getState()))).not.toBeNull();
+    expect(selectDatasetGeneration(store.getState())).toBe(initialGeneration);
+
+    const invalid = { ...projectDataset(source), source: undefined };
+    expect(store.getState().loadDataset(invalid)).toBe(false);
+    expect(selectDatasetGeneration(store.getState())).toBe(initialGeneration);
+
+    // Metadata is intentionally identical: a monotonically increasing import
+    // epoch still changes the HrEventBuilder key and remounts all form state.
+    expect(store.getState().loadDataset(projectDataset(source))).toBe(true);
+    expect(selectDatasetGeneration(store.getState())).toBe(
+      initialGeneration + 1,
+    );
+  });
+
   it("commits the event atomically and matches preview eligibility to actual candidates", () => {
     const { store } = readyStore();
     const before = store.getState();

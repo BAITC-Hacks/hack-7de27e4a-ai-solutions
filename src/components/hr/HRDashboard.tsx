@@ -483,8 +483,8 @@ export function HRDashboard({
           </p>
         </details>
       </div>
-      <HRAgentPanel />
-      <DropoutPanel input={filtered} />
+      <HRAgentPanel concealEmployeeIds />
+      <DropoutPanel input={filtered} concealEmployeeIds />
       <div className={styles.grid}>
         <div>
           <section className={styles.panel}>

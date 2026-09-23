@@ -47,6 +47,8 @@ export type EmployeeState = {
   error: string | null;
   notice: string | null;
   revision: number;
+  /** Successful dataset loads only; stable across session overlay mutations. */
+  datasetGeneration: number;
   adapterReady: boolean;
   connect: (adapter: IntelligenceAdapter) => void;
   loadDataset: (dataset: Dataset) => boolean;
@@ -93,6 +95,7 @@ export function createEmployeeStore(
     error: null,
     notice: null,
     revision: 0,
+    datasetGeneration: 0,
     adapterReady: !!initialAdapter,
     connect(next) {
       const previous = adapter;
@@ -124,7 +127,8 @@ export function createEmployeeStore(
     loadDataset(raw) {
       generation++;
       try {
-        const resetHrOverlay = get().hrCreatedEvents.length > 0;
+        const previous = get();
+        const resetHrOverlay = previous.hrCreatedEvents.length > 0;
         const dataset = freezeDeep(structuredClone(raw));
         const views = evaluateAll(dataset, []);
         set({
@@ -145,7 +149,8 @@ export function createEmployeeStore(
             resetHrOverlay
               ? "Данные загружены повторно. Созданные HR-активности сброшены вместе с сессионными изменениями."
               : "Данные загружены. Изменения сохраняются только в текущей сессии.",
-          revision: get().revision + 1,
+          revision: previous.revision + 1,
+          datasetGeneration: previous.datasetGeneration + 1,
         });
         return true;
       } catch (error) {
@@ -398,6 +403,9 @@ export const selectNormalizedDataset = (state: EmployeeState) =>
 export const selectNormalizedSource = (state: EmployeeState) =>
   state.dataset?.source ?? null;
 export const selectLedger = (state: EmployeeState) => state.ledger;
+/** UI reset boundary for state that belongs to one imported dataset session. */
+export const selectDatasetGeneration = (state: EmployeeState) =>
+  state.datasetGeneration;
 export const selectEmployeeViews = (state: EmployeeState) => state.views;
 export const selectCurrentView = (state: EmployeeState) =>
   state.selectedEmployeeId

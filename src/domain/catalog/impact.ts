@@ -56,14 +56,14 @@ export function previewHrEventImpact(
             (gap) =>
               gap.critical &&
               gap.gap > 0 &&
-              (proposedEligibility.effectiveGains[gap.skillId] ?? 0) > 0,
+              (proposedEligibility.effectiveGains[gap.skillId] ?? 0) >= gap.gap,
           )
         ) {
           criticalAffectedEmployeeIds.add(employeeId);
         }
       }
 
-      const existingCoverage = new Set<string>();
+      const existingBestGain = new Map<string, number>();
       catalogEvents.forEach((catalogEvent) => {
         const eligibility = evaluateEligibility(
           dataset,
@@ -73,22 +73,32 @@ export function previewHrEventImpact(
         );
         if (!eligibility.eligible) return;
         Object.entries(eligibility.effectiveGains).forEach(([skillId, gain]) => {
-          if (gain > 0) existingCoverage.add(skillId);
+          existingBestGain.set(
+            skillId,
+            Math.max(existingBestGain.get(skillId) ?? 0, gain),
+          );
         });
       });
 
       gapAnalysis.gaps
         .filter((gap) => gap.gap > 0)
         .forEach((gap) => {
-          const servedBefore = existingCoverage.has(gap.skillId);
-          const servedByProposed =
+          const gainBefore = existingBestGain.get(gap.skillId) ?? 0;
+          const proposedGain =
             proposedEligibility.eligible &&
-            (proposedEligibility.effectiveGains[gap.skillId] ?? 0) > 0;
+            (proposedEligibility.effectiveGains[gap.skillId] ?? 0) > 0
+              ? proposedEligibility.effectiveGains[gap.skillId] ?? 0
+              : 0;
+          // Catalog coverage means one currently eligible activity can close
+          // the remaining gap. A partial gain is useful, but it must remain in
+          // the HR "multiple steps" bucket instead of being reported as closed.
+          const servedBefore = gainBefore >= gap.gap;
+          const servedAfter = Math.max(gainBefore, proposedGain) >= gap.gap;
           if (!servedBefore) {
             addToSetMap(unservedBySkillBefore, gap.skillId, employeeId);
             if (gap.critical) criticalUncoveredBefore.add(employeeId);
           }
-          if (!servedBefore && !servedByProposed) {
+          if (!servedAfter) {
             addToSetMap(unservedBySkillAfter, gap.skillId, employeeId);
             if (gap.critical) criticalUncoveredAfter.add(employeeId);
           }

@@ -108,6 +108,7 @@ function validateReferences(
       issues.push({ path: `target_grades.${index}`, message: `Unknown grade: ${grade}` });
     }
   });
+  const developedSkillIds = new Set<string>();
   draft.develops_skills.forEach((effect, index) => {
     if (!hasOwn(dataset.skillsById, effect.skill_id)) {
       issues.push({
@@ -115,6 +116,13 @@ function validateReferences(
         message: `Unknown skill: ${effect.skill_id}`,
       });
     }
+    if (developedSkillIds.has(effect.skill_id)) {
+      issues.push({
+        path: `develops_skills.${index}.skill_id`,
+        message: "Активность содержит повторяющийся навык",
+      });
+    }
+    developedSkillIds.add(effect.skill_id);
   });
   Object.keys(draft.prerequisites).forEach((skillId) => {
     if (!hasOwn(dataset.skillsById, skillId)) {
@@ -231,6 +239,9 @@ export function safeValidateHrEventDraft(
 }
 
 function parseIsoDate(date: string): { year: number; month: number; day: number } {
+  if (!isoDateSchema.safeParse(date).success) {
+    throw new Error(`Invalid ISO date: ${date}`);
+  }
   const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(date);
   if (!match) throw new Error(`Invalid ISO date: ${date}`);
   return { year: Number(match[1]), month: Number(match[2]), day: Number(match[3]) };

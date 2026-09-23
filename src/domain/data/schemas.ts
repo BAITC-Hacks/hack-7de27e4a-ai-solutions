@@ -1,8 +1,23 @@
 import { z } from "zod";
 
+function isValidIsoCalendarDate(value: string): boolean {
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
+  // Let the regex validator own malformed strings so callers receive one
+  // precise issue. This refinement handles calendar validity only.
+  if (!match) return true;
+  const year = Number(match[1]);
+  const month = Number(match[2]);
+  const day = Number(match[3]);
+  if (year < 1 || month < 1 || month > 12 || day < 1) return false;
+  const leap = year % 4 === 0 && (year % 100 !== 0 || year % 400 === 0);
+  const days = [31, leap ? 29 : 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
+  return day <= days[month - 1]!;
+}
+
 export const isoDateSchema = z
   .string()
-  .regex(/^\d{4}-\d{2}-\d{2}$/, "Expected ISO date YYYY-MM-DD");
+  .regex(/^\d{4}-\d{2}-\d{2}$/, "Expected ISO date YYYY-MM-DD")
+  .refine(isValidIsoCalendarDate, "Expected a valid calendar date YYYY-MM-DD");
 export const proficiencyLevelSchema = z.number().int().min(0).max(5);
 export const gradeSchema = z.enum(["Junior", "Middle", "Senior", "Lead"]);
 

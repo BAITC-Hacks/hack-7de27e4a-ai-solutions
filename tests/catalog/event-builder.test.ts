@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { buildHrAnalytics } from "@/domain/analytics";
+import { projectCoreAnalytics, selectHRAnalytics } from "@/domain/analytics";
 import {
   daysUntilEnrollmentDeadline,
   HrEventValidationError,
@@ -176,6 +176,25 @@ describe("HR event builder validation", () => {
     expect(paths).toContain("develops_skills.0.max_level");
   });
 
+  it("rejects duplicate developed skills so preview and completion cannot diverge", () => {
+    const result = safeValidateHrEventDraft(
+      fixture(),
+      validDraft({
+        develops_skills: [
+          { skill_id: "SK_LEADERSHIP", gain: 1, max_level: 5 },
+          { skill_id: "SK_LEADERSHIP", gain: 2, max_level: 5 },
+        ],
+      }),
+    );
+
+    expect(result.success).toBe(false);
+    if (result.success) return;
+    expect(result.error.issues).toContainEqual({
+      path: "develops_skills.1.skill_id",
+      message: "Активность содержит повторяющийся навык",
+    });
+  });
+
   it("rejects a scheduled event without a session on or after the snapshot", () => {
     expect(
       errorPaths(() =>
@@ -234,6 +253,39 @@ describe("HR event builder validation", () => {
     ).toContain("enrollment_deadline");
   });
 
+  it("rejects impossible calendar dates and accepts a real leap day", () => {
+    for (const session of ["2026-02-30", "2026-13-01", "2026-02-29"]) {
+      expect(
+        errorPaths(() =>
+          validateHrEventDraft(
+            fixture(),
+            validDraft({ upcoming_sessions: [session], enrollment_deadline: undefined }),
+          ),
+        ),
+      ).toContain("upcoming_sessions.0");
+    }
+    expect(
+      errorPaths(() =>
+        validateHrEventDraft(
+          fixture(),
+          validDraft({ enrollment_deadline: "2026-02-30" }),
+        ),
+      ),
+    ).toContain("enrollment_deadline");
+    expect(() =>
+      validateHrEventDraft(
+        fixture(),
+        validDraft({
+          upcoming_sessions: ["2028-02-29"],
+          enrollment_deadline: "2028-02-28",
+        }),
+      ),
+    ).not.toThrow();
+    expect(() => daysUntilEnrollmentDeadline("2026-02-28", "2026-02-30")).toThrow(
+      "Invalid ISO date",
+    );
+  });
+
   it("allocates a collision-free deterministic EV_HR identifier", () => {
     const dataset = fixture();
     dataset.eventsById.EV_HR_001 = dataset.eventsById.EV_BASE;
@@ -281,8 +333,52 @@ describe("HR event impact preview", () => {
         (candidate) => candidate.activityId === created.event.id,
       ),
     ).toBe(true);
-    expect(buildHrAnalytics(saved).catalogGaps.map((gap) => gap.skillId)).not.toContain(
+    expect(selectHRAnalytics(projectCoreAnalytics(saved)).catalogGaps.map((gap) => gap.skillId)).not.toContain(
       "SK_LEADERSHIP",
     );
+  });
+
+  it("keeps a skill uncovered when the proposed gain cannot close the remaining gap", () => {
+    const dataset = fixture();
+    dataset.employeesById.E1 = {
+      ...dataset.employeesById.E1,
+      skills: { ...dataset.employeesById.E1.skills, SK_LEADERSHIP: 0 },
+    };
+    const created = validateHrEventDraft(dataset, validDraft());
+    const preview = previewHrEventImpact(dataset, created.event);
+
+    expect(preview.eligibleEmployeeIds).toContain("E1");
+    expect(preview.criticalAffectedEmployeeIds).not.toContain("E1");
+    expect(preview.criticalUncoveredEmployeeIdsBefore).toContain("E1");
+    expect(preview.criticalUncoveredEmployeeIdsAfter).toContain("E1");
+    expect(preview.newlyCoveredSkillIds).not.toContain("SK_LEADERSHIP");
+
+    const saved: NormalizedDataset = {
+      ...dataset,
+      eventsById: {
+        ...dataset.eventsById,
+        [created.event.id]: created.event,
+      },
+    };
+    expect(selectHRAnalytics(projectCoreAnalytics(saved)).catalogGaps).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          skillId: "SK_LEADERSHIP",
+          needsMultipleSteps: 1,
+        }),
+      ]),
+    );
+
+    const closing = validateHrEventDraft(
+      dataset,
+      validDraft({
+        develops_skills: [
+          { skill_id: "SK_LEADERSHIP", gain: 2, max_level: 5 },
+        ],
+      }),
+    );
+    const closingPreview = previewHrEventImpact(dataset, closing.event);
+    expect(closingPreview.criticalAffectedEmployeeIds).toContain("E1");
+    expect(closingPreview.criticalUncoveredEmployeeIdsAfter).not.toContain("E1");
   });
 });

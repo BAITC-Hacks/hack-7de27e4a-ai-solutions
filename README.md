@@ -192,7 +192,7 @@ External Learning Layer поверх `main cf1dc89` прошёл **190 тест�
 Browser smoke подтвердил активные `EmployeeWorkspace` и `HRDashboard`, RU/KK/EN,
 скрытие общеорганизационного external-агрегата при фильтре роли и отсутствие console errors.
 
-HR Event Builder поверх актуального `main f287b40` прошёл **231 тест в 28 файлах**,
+HR Event Builder поверх актуального `main 02f4bf6` прошёл **321 тест в 37 файлах**,
 TypeScript typecheck и production build. Проверены строгая схема, точное совпадение preview
 с пересчитанными кандидатами, session reset, дедлайны от даты среза и RFC 5545 export.
 

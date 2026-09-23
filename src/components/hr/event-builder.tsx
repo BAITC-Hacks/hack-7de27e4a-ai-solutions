@@ -18,7 +18,10 @@ import {
 import type { EventFormat, Grade } from "@/lib/contracts";
 import { useI18n } from "@/lib/i18n/I18nProvider";
 import { catalogName, localizeMessage } from "@/lib/i18n/domain";
-import type { EmployeeStore } from "@/state/employeeStore";
+import {
+  selectDatasetGeneration,
+  type EmployeeStore,
+} from "@/state/employeeStore";
 
 import styles from "./event-builder.module.css";
 
@@ -44,13 +47,21 @@ function downloadCalendar(content: string, name: string): void {
   window.setTimeout(() => URL.revokeObjectURL(url), 0);
 }
 
-export function HrEventBuilder({
-  store,
-  request,
-}: {
+type HrEventBuilderProps = {
   store: EmployeeStore;
   request?: EventBuilderRequest | null;
-}) {
+};
+
+/** Remount form-local state for every successful import, even when metadata is unchanged. */
+export function HrEventBuilder(props: HrEventBuilderProps) {
+  const datasetGeneration = useStore(props.store, selectDatasetGeneration);
+  return <HrEventBuilderSession key={datasetGeneration} {...props} />;
+}
+
+function HrEventBuilderSession({
+  store,
+  request,
+}: HrEventBuilderProps) {
   const { locale, t, date: dateLabel, number } = useI18n();
   const dataset = useStore(store, (state) => state.normalizedDataset);
   const hrCreatedEvents = useStore(store, (state) => state.hrCreatedEvents);
@@ -371,7 +382,7 @@ export function HrEventBuilder({
           <div className={styles.subsectionHead}>
             <div>
               <h4>{t("Развиваемые навыки", "Дамытылатын дағдылар", "Skills developed")}</h4>
-              <p>{t("Gain ограничен 1–2, уровень — максимум 5.", "Gain 1–2 аралығында, ең жоғары деңгей — 5.", "Gain is limited to 1–2 and the maximum level is 5.")}</p>
+              <p>{t("Прирост ограничен 1–2, максимальный уровень — 5.", "Өсім 1–2 аралығында, ең жоғары деңгей — 5.", "Gain is limited to 1–2 and the maximum level is 5.")}</p>
             </div>
             <button
               type="button"
@@ -396,7 +407,7 @@ export function HrEventBuilder({
                   </select>
                 </label>
                 <label>
-                  Gain
+                  {t("Прирост", "Өсім", "Gain")}
                   <select
                     value={effect.gain}
                     onChange={(event) => setEffects((current) => current.map((item, itemIndex) => itemIndex === index ? { ...item, gain: Number(event.target.value) } : item))}
@@ -406,7 +417,7 @@ export function HrEventBuilder({
                   </select>
                 </label>
                 <label>
-                  Max level
+                  {t("Максимальный уровень", "Ең жоғары деңгей", "Max level")}
                   <select
                     value={effect.maxLevel}
                     onChange={(event) => setEffects((current) => current.map((item, itemIndex) => itemIndex === index ? { ...item, maxLevel: Number(event.target.value) } : item))}
@@ -415,7 +426,23 @@ export function HrEventBuilder({
                   </select>
                 </label>
                 {effects.length > 1 && (
-                  <button type="button" className={styles.removeButton} onClick={() => setEffects((current) => current.filter((_, itemIndex) => itemIndex !== index))}>
+                  <button
+                    type="button"
+                    className={styles.removeButton}
+                    aria-label={t(
+                      "Удалить развиваемый навык {skill}, строка {row}",
+                      "Дамытылатын {skill} дағдысын жою, {row}-жол",
+                      "Remove developed skill {skill}, row {row}",
+                      {
+                        skill: catalogName(
+                          dataset.skillsById[effect.skillId]?.name ?? effect.skillId,
+                          locale,
+                        ),
+                        row: number(index + 1),
+                      },
+                    )}
+                    onClick={() => setEffects((current) => current.filter((_, itemIndex) => itemIndex !== index))}
+                  >
                     {t("Удалить", "Жою", "Remove")}
                   </button>
                 )}
@@ -428,7 +455,7 @@ export function HrEventBuilder({
           <div className={styles.subsectionHead}>
             <div>
               <h4>{t("Предварительные требования", "Алдын ала талаптар", "Prerequisites")}</h4>
-              <p>{t("Необязательно. Проверяются тем же eligibility-движком.", "Міндетті емес. Сол eligibility жүйесі тексереді.", "Optional. Checked by the same eligibility engine.")}</p>
+              <p>{t("Необязательно. Проверяются тем же механизмом допуска.", "Міндетті емес. Сол қатысу талаптарын тексеру механизмімен тексеріледі.", "Optional. Checked by the same eligibility engine.")}</p>
             </div>
             <button
               type="button"
@@ -454,7 +481,23 @@ export function HrEventBuilder({
                       {[0, 1, 2, 3, 4, 5].map((level) => <option key={level} value={level}>{level}</option>)}
                     </select>
                   </label>
-                  <button type="button" className={styles.removeButton} onClick={() => setPrerequisites((current) => current.filter((_, rowIndex) => rowIndex !== index))}>
+                  <button
+                    type="button"
+                    className={styles.removeButton}
+                    aria-label={t(
+                      "Удалить требование {skill}, строка {row}",
+                      "{skill} талабын жою, {row}-жол",
+                      "Remove prerequisite {skill}, row {row}",
+                      {
+                        skill: catalogName(
+                          dataset.skillsById[item.skillId]?.name ?? item.skillId,
+                          locale,
+                        ),
+                        row: number(index + 1),
+                      },
+                    )}
+                    onClick={() => setPrerequisites((current) => current.filter((_, rowIndex) => rowIndex !== index))}
+                  >
                     {t("Удалить", "Жою", "Remove")}
                   </button>
                 </div>
@@ -484,7 +527,24 @@ export function HrEventBuilder({
                     value={session}
                     onChange={(event) => setSessions((current) => current.map((item, itemIndex) => itemIndex === index ? event.target.value : item))}
                   />
-                  {sessions.length > 1 && <button type="button" className={styles.removeButton} onClick={() => setSessions((current) => current.filter((_, itemIndex) => itemIndex !== index))}>{t("Удалить", "Жою", "Remove")}</button>}
+                  {sessions.length > 1 && (
+                    <button
+                      type="button"
+                      className={styles.removeButton}
+                      aria-label={t(
+                        "Удалить сессию {date}, строка {row}",
+                        "{date} сессиясын жою, {row}-жол",
+                        "Remove session {date}, row {row}",
+                        {
+                          date: dateLabel(session),
+                          row: number(index + 1),
+                        },
+                      )}
+                      onClick={() => setSessions((current) => current.filter((_, itemIndex) => itemIndex !== index))}
+                    >
+                      {t("Удалить", "Жою", "Remove")}
+                    </button>
+                  )}
                 </div>
               ))}
             </div>
@@ -492,7 +552,7 @@ export function HrEventBuilder({
         )}
 
         <label className={styles.deadline}>
-          {t("Дедлайн записи (не влияет на ranking)", "Тіркелу мерзімі (ranking-ке әсер етпейді)", "Enrollment deadline (does not affect ranking)")}
+          {t("Дедлайн записи (не влияет на порядок рекомендаций)", "Тіркелу мерзімі (ұсынымдар ретіне әсер етпейді)", "Enrollment deadline (does not affect ranking)")}
           <input
             type="date"
             min={dataset.meta.asOfDate}
@@ -513,7 +573,7 @@ export function HrEventBuilder({
         )}
 
         {previewIsCurrent && preview && (
-          <section className={styles.preview} aria-live="polite">
+          <section className={styles.preview} role="status" aria-live="polite" aria-atomic="true">
             <div className={styles.previewHead}>
               <div>
                 <span>{t("Предпросмотр до сохранения", "Сақтау алдындағы алдын ала қарау", "Preview before save")}</span>
@@ -523,7 +583,7 @@ export function HrEventBuilder({
             </div>
             <div className={styles.metrics}>
               <div><span>{t("Подходит сотрудникам", "Қызметкерлерге сай", "Eligible employees")}</span><strong>{number(preview.impact.eligibleEmployeeCount)}</strong></div>
-              <div><span>{t("Критичный эффект", "Маңызды әсер", "Critical impact")}</span><strong>{number(preview.impact.criticalAffectedEmployeeCount)}</strong></div>
+              <div><span>{t("Критичные разрывы закрыты", "Маңызды алшақтықтары жабылады", "Critical gaps closed")}</span><strong>{number(preview.impact.criticalAffectedEmployeeCount)}</strong></div>
               <div><span>{t("Без покрытия: до → после", "Қамтусыз: дейін → кейін", "Uncovered: before → after")}</span><strong>{number(preview.impact.criticalUncoveredEmployeesBefore)} → {number(preview.impact.criticalUncoveredEmployeesAfter)}</strong></div>
             </div>
             <p>
