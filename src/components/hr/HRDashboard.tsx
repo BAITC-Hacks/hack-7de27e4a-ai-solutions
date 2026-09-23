@@ -5,6 +5,8 @@ import { useI18n } from "@/lib/i18n/I18nProvider";
 import { catalogName } from "@/lib/i18n/domain";
 import { selectHRAnalytics } from "../../domain/analytics/selectors";
 import type { AnalyticsInput, CatalogGap } from "../../domain/analytics/types";
+import { useTrustIntegration } from "../trust/integration";
+import { HrExternalLearningSection } from "./external-learning-section";
 import styles from "./dashboard.module.css";
 
 type BriefSpec =
@@ -48,6 +50,8 @@ function MetricIcon({
 
 export function HRDashboard({ input }: { input: AnalyticsInput }) {
   const { locale, t, number } = useI18n();
+  const externalLearningPlan =
+    useTrustIntegration()?.externalLearningPlan ?? null;
   const pct = (n: number | null) =>
     n === null
       ? t("Нет данных", "Дерек жоқ", "No data")
@@ -820,6 +824,9 @@ export function HRDashboard({ input }: { input: AnalyticsInput }) {
               "Available activities cover the current gaps.",
             )}
           </p>
+        )}
+        {!effectiveRole && externalLearningPlan && (
+          <HrExternalLearningSection plan={externalLearningPlan} />
         )}
       </section>
       {brief && (

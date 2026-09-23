@@ -46,6 +46,10 @@
 | 18 | Employee payload | только viewer history; коллеги представлены sanitized Skill Buddy DTO | ✅ |
 | 19 | Browser-import вызывает внешний critic | запрос не отправляется без server provenance; остаётся deterministic explanation | ✅ |
 | 20 | Spoofed `X-Forwarded-For` | rate limit не использует caller header; deployment bucket имеет O(1) память | ✅ |
+| 21 | Внешний курс добавлен в каталог | top-3, readiness и effective skills не меняются | ✅ |
+| 22 | Внутренняя eligible activity закрывает gap | внешний блок для этого gap скрывается | ✅ |
+| 23 | Неизвестный skill ID, HTTP или домен-lookalike | внешний каталог отклоняется строгой схемой | ✅ |
+| 24 | Повторный external selection | тот же порядок; language/level/free/duration/id соблюдены | ✅ |
 
 ## 4. Результаты прогона
 
@@ -53,9 +57,9 @@
 
 | Проверка | Результат |
 |---|---:|
-| Автоматические тесты | **152/152 PASS**, 19 test-файлов |
+| Автоматические тесты | **190/190 PASS**, 23 test-файла |
 | TypeScript / production build | **PASS / PASS** |
-| Docker image / HTTP routes | **PASS / 4 из 4 вернули 200** |
+| Docker image / production browser smoke | **PASS / Employee + HR PASS** |
 | Профили | **200/200** |
 | Сформированные рекомендации | **438** |
 | Все eligible-кандидаты, сверенные с simulation | **620/620** |
@@ -68,19 +72,20 @@
 | Duplicate-completion проверки | **147** |
 | Beam paths | **200**, 433 фактических шага |
 | Skill Buddy запросы | **12 000** |
+| Critical hard-gap без внутреннего покрытия | **88 сотрудников**, вычислено из snapshot |
 
-Интерактивный smoke на финальной Docker-сборке подтвердил identity-bound employee view,
-What-if (`После выполнения` + кнопка confirm), четыре file input в Demo Lab, HR, Trust и
-`no_key` API fallback; console errors — 0. Completion, instant reranking, duplicate protection
-и replay после persistence дополнительно покрыты автоматическими тестами. Для ранее проблемного
-`E0150 / System Design Fundamentals` карточка и What-if совпадают: **64% → 67%**.
+Интерактивный smoke на финальной production-сборке подтвердил активные Employee и HR экраны,
+External Learning на RU/KK/EN, агрегаты **184 профиля с непокрытым gap / 88 с критичным
+hard-skill gap**, согласованность role-filter и отсутствие console errors. Completion, instant
+reranking, duplicate protection и replay дополнительно покрыты автоматическими тестами.
+Внешние ссылки изолированы; числовой gain нигде не заявляется.
 
 ## 5. Известные ограничения
 
 - Role switch и configured viewer — демонстрационная граница, не production authentication.
 - Employee route минимизирован сервером; полный синтетический набор намеренно доступен в
   Demo Lab и HR/Trust. Перед реальными данными всё равно нужны SSO/RBAC и audit log.
-- IndexedDB ledger локален одному браузеру и не синхронизируется между устройствами.
+- Активный ledger хранится в памяти вкладки и не синхронизируется между перезагрузками или устройствами.
 - Импортированный judge dataset живёт в текущей browser-сессии.
 - External LLM critic для browser-import намеренно отключён: только bundled server dataset имеет
   доверенную provenance; deterministic recommendation/explanation продолжает работать полностью.

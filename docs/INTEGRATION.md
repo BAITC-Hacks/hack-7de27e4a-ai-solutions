@@ -2,7 +2,7 @@
 
 ## Активная архитектура — 2026-09-23
 
-По выбору пользователя поверх `main ef90bc9` сохранён согласованный интерфейс на RU/KK/EN
+По выбору пользователя поверх `main cf1dc89` сохранён согласованный интерфейс на RU/KK/EN
 (решение 18 в `docs/DECISIONS.md`).
 
 - `/` и `/demo` перенаправляют на `/employee`: импорт четырёх файлов или кнопка
@@ -22,6 +22,11 @@
 и XP-модуль не подключены к активным страницам. HR bridge получает актуальные views,
 исходную историю и ledger; подтверждения учитываются один раз. Trust проверяет текущий
 `normalizedDataset`.
+
+External Learning Layer читает тот же актуальный `normalizedDataset`, но остаётся отдельным
+read-only слоем: строгий офлайновый каталог валидируется локально, Employee получает только
+курсы для разрывов без eligible внутренней активности, а HR — только агрегированный план.
+Внешние курсы не входят в ranking, top-3, readiness, what-if или completion ledger.
 
 ## AI boundary
 
@@ -60,16 +65,16 @@ bounded-evidence контракта текущего UI.
 
 ## Фактическая проверка объединения — 2026-09-23
 
-- **168/168 тестов в 21 файле — PASS.**
-- **Production build с полной проверкой TypeScript — PASS**, Next.js 16.3.6.
+- **190/190 тестов в 23 файлах — PASS.**
+- **TypeScript, production build и Docker image build — PASS**, Next.js 16.3.5.
 - Сборка включает `/`, `/demo`, `/employee`, `/hr`, `/trust`,
   `/api/ai/explain`, `/api/ai/review` и `/api/demo-dataset`.
-- Browser smoke: `/demo` → `/employee`, demo с 200 профилями, HR CTA остаётся на `/hr`,
-  возврат Employee сохраняет профиль, HR labels переключаются RU/EN/KK,
-  no-key объяснение доступно на RU и ranking сохранён; ошибок console нет.
+- Browser smoke: demo с 200 профилями, External Learning встроен в активные Employee и HR,
+  labels переключаются RU/KK/EN, HR role-filter скрывает общеорганизационный external-агрегат,
+  ranking не меняется; ошибок console нет.
 
-Локальные Windows-проверки выполнены с адаптацией запуска процессов без отключения
-TypeScript или тестов. Стандартные команды: `pnpm test`, `pnpm typecheck`, `pnpm build`.
+Локальные проверки выполнены стандартными командами без отключения TypeScript или тестов:
+`pnpm test`, `pnpm typecheck`, `pnpm build`, затем `docker compose build`.
 
 Исторические результаты: 117 тестов в 14 файлах и сборка относятся к согласованному UI
 до объединения; 152 теста в 19 файлах, сборка и Docker smoke — к PR #6
@@ -83,7 +88,7 @@ TypeScript или тестов. Стандартные команды: `pnpm tes
 - Активный ledger не сохраняется между перезагрузками или устройствами.
 - `/api/ai/explain` подтверждает согласованность ответа с evidence, а не достоверность
   импортированных фактов. Лимит запросов действует в одном серверном процессе.
-- Docker smoke PR #6 исторический; объединённая версия отдельно в Docker не проверялась.
+- Docker image актуальной версии собран; отдельный HTTP smoke внутри контейнера не выполнялся.
 - Live платный LLM не вызывался; success, invalid output, outage, timeout, endpoint hardening и
   no-key проверены mock transport и настоящим локальным route.
 - GitHub Actions ранее не стартовал из-за billing lock организации; локальный PASS не означает,
