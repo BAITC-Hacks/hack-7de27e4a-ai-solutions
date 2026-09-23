@@ -69,17 +69,14 @@ pnpm dev
 Выбор сохраняется в браузере и восстанавливается после перезагрузки. Язык интерфейса
 не зависит от `preferred_language` выбранного сотрудника: смена профиля его не меняет.
 
-Docker:
+Docker — одной командой:
 
 ```bash
 docker compose up --build
 ```
 
-Если опциональные LLM-переменные заданы в `.env.local`, передать их Compose явно:
-
-```bash
-docker compose --env-file .env.local up --build
-```
+Полная инструкция с развёртыванием на сервере, проверкой и обновлением —
+в разделе [Развёртывание через Docker](#развёртывание-через-docker).
 
 **LLM-ключ не обязателен.** Без него приложение работает полностью: тот же ranking и
 детерминированные объяснения. Ключ включает bounded-критика и HR-агента поверх вычисленных фактов.
@@ -129,6 +126,77 @@ Docker Compose также передаёт эти переменные из за
 
 Это подтверждает доступ проверенного локального ключа на момент проверки. Чистый clone
 не содержит ключ: для live-демо на компьютере жюри нужен отдельно настроенный ключ.
+
+## Развёртывание через Docker
+
+Требования: Git, Docker, Docker Compose v2 и доступ к интернету.
+
+### 1. Скачать проект
+
+```bash
+git clone https://github.com/BAITC-Hacks/hack-7de27e4a-ai-solutions.git
+cd hack-7de27e4a-ai-solutions
+```
+
+### 2. Настроить LLM
+
+Скопировать шаблон окружения:
+
+```bash
+cp .env.example .env.local
+```
+
+Заполнить `.env.local`:
+
+```env
+LLM_API_KEY=YOUR_OPENAI_API_KEY
+LLM_BASE_URL=https://api.openai.com/v1
+LLM_MODEL=gpt-4.1-mini
+LLM_TIMEOUT_MS=2500
+LLM_AGENT_TIMEOUT_MS=10000
+```
+
+Вместо `YOUR_OPENAI_API_KEY` указать действующий ключ OpenAI. `.env.local` в Git не добавляется —
+он уже в `.gitignore`.
+
+**Шаг необязательный.** Без ключа рекомендации и аналитика работают в детерминированном режиме,
+отключается только LLM-слой.
+
+### 3. Запустить приложение
+
+```bash
+docker compose --env-file .env.local up -d --build
+```
+
+Открыть http://localhost:3000. Без `.env.local` достаточно `docker compose up -d --build`.
+
+На удалённом сервере приложение доступно по адресу `http://<IP-сервера>:3000`, если порт открыт.
+Для домена настроить reverse proxy с HTTPS на порт 3000.
+
+### 4. Проверить запуск
+
+```bash
+docker compose --env-file .env.local ps
+docker compose --env-file .env.local logs --tail=100 app
+curl http://localhost:3000/api/ai/agent
+```
+
+Ответ `{"status":"available"}` подтверждает наличие настроек LLM, но не проверяет сам ключ
+и баланс. Без ключа маршрут честно отвечает `{"status":"no_key"}`. Для полной проверки
+загрузить демо, открыть HR-дашборд и задать вопрос агенту.
+
+### 5. Обновить проект
+
+```bash
+git pull --ff-only origin main
+docker compose --env-file .env.local up -d --build
+```
+
+После изменения `.env.local` повторить команду запуска.
+
+> Загруженные данные и изменения хранятся в памяти вкладки: после перезагрузки страницы
+> набор нужно загрузить заново. Если порт 3000 занят локальным `pnpm dev`, Compose не
+> стартует — остановите dev-сервер или смените порт в `docker-compose.yml`.
 
 ## Демо-сценарий
 
