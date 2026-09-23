@@ -8,7 +8,8 @@ __pycache__
 .git
 .github
 .env
-.env.local
+.env.*
+!.env.example
 *.log
 .DS_Store
 docs

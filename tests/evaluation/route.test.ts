@@ -1,11 +1,12 @@
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { POST } from "@/app/api/ai/review/route";
 import { recommendForEmployee } from "@/domain/recommendation";
 
 import { loadChallengeDataset } from "../recommendation/test-utils";
 
-afterEach(() => vi.unstubAllEnvs());
+beforeEach(() => vi.stubEnv("OPENAI_API_KEY", ""));
+afterEach(() => { vi.unstubAllEnvs(); vi.unstubAllGlobals(); });
 
 const dataset = loadChallengeDataset();
 const engineResult = Object.keys(dataset.employeesById)
@@ -33,6 +34,18 @@ const post = (
   });
 
 describe("AI route", () => {
+  it("blocks a custom endpoint without an explicit model before making any provider request", async () => {
+    vi.stubEnv("LLM_API_KEY", "test-key");
+    vi.stubEnv("LLM_BASE_URL", "https://provider.example/v1");
+    vi.stubEnv("LLM_MODEL", "");
+    const fetcher = vi.fn();
+    vi.stubGlobal("fetch", fetcher);
+    const response = await POST(post(requestFixture()));
+    expect(response.status).toBe(200);
+    expect(await response.json()).toMatchObject({ status: "blocked", blockedReasons: ["PROVIDER_CONFIG_INVALID"] });
+    expect(fetcher).not.toHaveBeenCalled();
+  });
+
   it("returns a no-store localized fallback without a key", async () => {
     vi.stubEnv("LLM_API_KEY", "");
     const response = await POST(post(requestFixture()));

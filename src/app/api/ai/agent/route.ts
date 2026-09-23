@@ -2,14 +2,15 @@ import { agentStepRequestSchema } from '../../../../lib/evaluation/agent-contrac
 import { readLimitedBody } from '../review/provider';
 import { createAgentProvider, isAgentProviderConfigured } from './provider';
 import { runAgentStep } from './service';
+import { readAgentTimeout, readProviderConfig } from '../provider-config';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 const headers = { 'Cache-Control': 'no-store', 'Content-Type': 'application/json' };
 export async function GET(): Promise<Response> {
-  const apiKey = process.env.LLM_API_KEY?.trim();
-  const configured = apiKey && isAgentProviderConfigured({ apiKey, baseUrl: process.env.LLM_BASE_URL ?? '', model: process.env.LLM_MODEL ?? '' });
-  return Response.json({ status: !apiKey ? 'no_key' : configured ? 'available' : 'unavailable' }, { headers });
+  const config = readProviderConfig();
+  const configured = config.apiKey && isAgentProviderConfigured(config);
+  return Response.json({ status: !config.apiKey ? 'no_key' : configured ? 'available' : 'unavailable' }, { headers });
 }
 export async function POST(request: Request): Promise<Response> {
   const origin = request.headers.get('origin');
@@ -28,7 +29,7 @@ export async function POST(request: Request): Promise<Response> {
   }
   const parsed = agentStepRequestSchema.safeParse(input);
   if (!parsed.success) return Response.json({ error: 'INVALID_AGENT_REQUEST' }, { status: 400, headers });
-  const apiKey = process.env.LLM_API_KEY?.trim();
-  const provider = apiKey ? createAgentProvider({ apiKey, baseUrl: process.env.LLM_BASE_URL ?? '', model: process.env.LLM_MODEL ?? '' }) : undefined;
-  return Response.json(await runAgentStep(parsed.data, { provider, timeoutMs: Number(process.env.LLM_TIMEOUT_MS ?? 10000), signal: request.signal }), { headers });
+  const config = readProviderConfig();
+  const provider = config.apiKey ? createAgentProvider(config) : undefined;
+  return Response.json(await runAgentStep(parsed.data, { provider, timeoutMs: readAgentTimeout(), signal: request.signal }), { headers });
 }
