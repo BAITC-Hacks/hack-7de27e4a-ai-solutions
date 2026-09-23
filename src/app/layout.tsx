@@ -1,9 +1,11 @@
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
 
+import "./globals.css";
+
 export const metadata: Metadata = {
-  title: "Career Quest",
-  description: "Explainable AI career navigation",
+  title: "Career Quest · AI Career Navigator",
+  description: "Explainable career navigation powered by evidence, not guesswork",
 };
 
 export default function RootLayout({ children }: Readonly<{ children: ReactNode }>) {
