@@ -1,6 +1,11 @@
 import { createStore } from "zustand/vanilla";
 import type { NormalizedDataset } from "@/lib/contracts";
 import {
+  validateHrEventDraft,
+  type HrCreatedEvent,
+  type HrEventDraft,
+} from "@/domain/catalog";
+import {
   adapterUnavailable,
   type Dataset,
   type EmployeeView,
@@ -31,6 +36,8 @@ export type EmployeeState = {
   normalizedDataset: NormalizedDataset | null;
   selectedEmployeeId: string | null;
   ledger: readonly LedgerEvent[];
+  /** Session-only catalog additions. A successful dataset reload clears them. */
+  hrCreatedEvents: readonly HrCreatedEvent[];
   views: Readonly<Record<string, EmployeeView>>;
   simulation: Preview | null;
   path: CareerPath | null;
@@ -40,10 +47,13 @@ export type EmployeeState = {
   error: string | null;
   notice: string | null;
   revision: number;
+  /** Successful dataset loads only; stable across session overlay mutations. */
+  datasetGeneration: number;
   adapterReady: boolean;
   connect: (adapter: IntelligenceAdapter) => void;
   loadDataset: (dataset: Dataset) => boolean;
   importFiles: (sources: UploadSources) => Promise<boolean>;
+  addHrEvent: (draft: HrEventDraft) => HrCreatedEvent | null;
   selectEmployee: (id: string) => void;
   previewActivity: (activityId: string) => void;
   cancelPreview: () => void;
@@ -75,6 +85,7 @@ export function createEmployeeStore(
     normalizedDataset: null,
     selectedEmployeeId: null,
     ledger: [],
+    hrCreatedEvents: [],
     views: {},
     simulation: null,
     path: null,
@@ -84,6 +95,7 @@ export function createEmployeeStore(
     error: null,
     notice: null,
     revision: 0,
+    datasetGeneration: 0,
     adapterReady: !!initialAdapter,
     connect(next) {
       const previous = adapter;
@@ -115,6 +127,8 @@ export function createEmployeeStore(
     loadDataset(raw) {
       generation++;
       try {
+        const previous = get();
+        const resetHrOverlay = previous.hrCreatedEvents.length > 0;
         const dataset = freezeDeep(structuredClone(raw));
         const views = evaluateAll(dataset, []);
         set({
@@ -125,14 +139,18 @@ export function createEmployeeStore(
           views,
           selectedEmployeeId: dataset.employees[0]?.id ?? null,
           ledger: freezeDeep([]),
+          hrCreatedEvents: freezeDeep([]),
           simulation: null,
           path: null,
           status: "ready",
           issues: [],
           error: null,
           notice:
-            "Данные загружены. Изменения сохраняются только в текущей сессии.",
-          revision: get().revision + 1,
+            resetHrOverlay
+              ? "Данные загружены повторно. Созданные HR-активности сброшены вместе с сессионными изменениями."
+              : "Данные загружены. Изменения сохраняются только в текущей сессии.",
+          revision: previous.revision + 1,
+          datasetGeneration: previous.datasetGeneration + 1,
         });
         return true;
       } catch (error) {
@@ -141,6 +159,64 @@ export function createEmployeeStore(
           error: errorMessage(error),
         });
         return false;
+      }
+    },
+    addHrEvent(draft) {
+      const state = get();
+      if (!state.dataset || state.status === "loading") return null;
+      try {
+        const source = state.dataset.source as NormalizedDataset | undefined;
+        const catalog = state.normalizedDataset ?? source;
+        if (!source || !catalog)
+          throw new Error("NormalizedDataset отсутствует в источнике адаптера");
+
+        const created = freezeDeep(validateHrEventDraft(catalog, draft));
+        const event = created.event;
+        const nextSource = freezeDeep({
+          ...source,
+          eventsById: {
+            ...source.eventsById,
+            [event.id]: event,
+          },
+        });
+        const nextDataset = freezeDeep({
+          ...state.dataset,
+          source: nextSource,
+          activities: [
+            ...state.dataset.activities,
+            {
+              id: event.id,
+              title: event.title,
+              type: event.type,
+              format: event.format,
+              durationHours: event.durationHours,
+              recurring: false,
+              mandatory: event.mandatory,
+              gains: event.developsSkills,
+              upcomingSessions: event.upcomingSessions,
+            },
+          ],
+        });
+        const views = evaluateAll(nextDataset, state.ledger);
+        const normalizedDataset = adapter.normalizedState
+          ? freezeDeep(adapter.normalizedState(nextDataset, state.ledger))
+          : null;
+
+        set({
+          dataset: nextDataset,
+          normalizedDataset,
+          views,
+          hrCreatedEvents: freezeDeep([...state.hrCreatedEvents, created]),
+          simulation: null,
+          path: null,
+          error: null,
+          notice: "HR-активность создана. Рекомендации пересчитаны.",
+          revision: state.revision + 1,
+        });
+        return created;
+      } catch (error) {
+        set({ error: errorMessage(error) });
+        return null;
       }
     },
     async importFiles(sources) {
@@ -327,6 +403,9 @@ export const selectNormalizedDataset = (state: EmployeeState) =>
 export const selectNormalizedSource = (state: EmployeeState) =>
   state.dataset?.source ?? null;
 export const selectLedger = (state: EmployeeState) => state.ledger;
+/** UI reset boundary for state that belongs to one imported dataset session. */
+export const selectDatasetGeneration = (state: EmployeeState) =>
+  state.datasetGeneration;
 export const selectEmployeeViews = (state: EmployeeState) => state.views;
 export const selectCurrentView = (state: EmployeeState) =>
   state.selectedEmployeeId

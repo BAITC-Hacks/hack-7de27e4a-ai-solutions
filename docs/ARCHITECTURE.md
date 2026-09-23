@@ -93,6 +93,12 @@ ledger заменяется API и SQL без изменения recommendation 
 Единый `NormalizedDataset` + один Zustand store читают **все три** поверхности. Копий датасета
 и копий бизнес-логики в UI не существует.
 
+HR Event Builder добавляет событие как session overlay рядом с completion ledger. Оно проходит
+ту же базовую Zod-схему, `analyzeGaps` и `evaluateEligibility`, после чего store атомарно
+пересчитывает все employee views и HR-агрегаты. `enrollment_deadline` и метка `createdBy: hr`
+хранятся отдельно от общего `DevelopmentEvent`, поэтому контракт движка и score не меняются.
+Повторный импорт очищает overlay; файлы `data/source` никогда не переписываются.
+
 ## 4. Recommendation Engine (поток A)
 
 ### 4.1 Порядок вычислений

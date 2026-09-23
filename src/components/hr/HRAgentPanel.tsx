@@ -9,7 +9,7 @@ import { catalogName } from '@/lib/i18n/domain';
 import { agentStatusCopy, agentToolCopy, localizeAgentReason } from './panel-localization';
 import styles from './dashboard.module.css';
 
-export function HRAgentPanel() {
+export function HRAgentPanel({ concealEmployeeIds = false }: { concealEmployeeIds?: boolean } = {}) {
   const { locale, t, number } = useI18n();
   const integration = useTrustIntegration();
   const snapshot = integration?.agentSnapshot;
@@ -50,10 +50,16 @@ export function HRAgentPanel() {
   if (integration?.access !== 'hr' || !snapshot?.normalizedDataset) return null;
   const source = snapshot.normalizedDataset;
   const roles = agentRoles(source);
+  const employeeIds = Object.keys(source.employeesById).sort((left, right) => right.length - left.length);
+  const concealedEmployeeLabel = t('профиль сотрудника', 'қызметкер профилі', 'employee profile');
+  const conceal = (value: string) => concealEmployeeIds
+    ? employeeIds.reduce((result, id) => result.replaceAll(id, concealedEmployeeLabel), value)
+    : value;
+  const visibleEmployeeId = concealEmployeeIds ? undefined : employeeId;
   const skillId = integration.challenge?.employee.gaps.find(gap => gap.critical && gap.required > gap.current)?.skillId;
   const suggestions = [
     t('Покажи навыки, для которых каталог не даёт следующего шага.', 'Каталог келесі қадамды ұсынбайтын дағдыларды көрсет.', 'Show skills for which the catalog provides no next step.'),
-    ...(employeeId ? [t('Покажи критические разрывы {id} и его рекомендации. Используй оба инструмента.', '{id} қызметкерінің сыни алшақтықтары мен ұсыныстарын көрсет. Екі құралды да қолдан.', 'Show the critical gaps and recommendations for {id}. Use both tools.', { id: employeeId })] : []),
+    ...(visibleEmployeeId ? [t('Покажи критические разрывы {id} и его рекомендации. Используй оба инструмента.', '{id} қызметкерінің сыни алшақтықтары мен ұсыныстарын көрсет. Екі құралды да қолдан.', 'Show the critical gaps and recommendations for {id}. Use both tools.', { id: visibleEmployeeId })] : []),
     ...(skillId ? [t('Проверь покрытие {id} и найди сотрудников с уровнем не ниже 4.', '{id} қамтылуын тексеріп, деңгейі 4-тен төмен емес қызметкерлерді тап.', 'Check coverage of {id} and find employees at level 4 or above.', { id: skillId })] : []),
   ];
   const start = async (text = question) => {
@@ -76,7 +82,7 @@ export function HRAgentPanel() {
     <form onSubmit={event => { event.preventDefault(); void start(); }}>
       <label htmlFor="hr-agent-question">{t('Ваш вопрос', 'Сұрағыңыз', 'Your question')}</label>
       <textarea id="hr-agent-question" className={styles.agentQuestion} maxLength={1200} rows={3} value={question} onChange={event => setQuestion(event.target.value)}
-        placeholder={employeeId ? t('Например: какие разрывы у {id} и что рекомендует движок?', 'Мысалы: {id} қызметкерінде қандай алшақтықтар бар және қозғалтқыш не ұсынады?', 'For example: what gaps does {id} have and what does the engine recommend?', { id: employeeId }) : t('Например: какие навыки не покрывает каталог?', 'Мысалы: каталог қандай дағдыларды қамтымайды?', 'For example: which skills are not covered by the catalog?')} disabled={busy || availability !== 'available'} />
+        placeholder={visibleEmployeeId ? t('Например: какие разрывы у {id} и что рекомендует движок?', 'Мысалы: {id} қызметкерінде қандай алшақтықтар бар және қозғалтқыш не ұсынады?', 'For example: what gaps does {id} have and what does the engine recommend?', { id: visibleEmployeeId }) : t('Например: какие навыки не покрывает каталог?', 'Мысалы: каталог қандай дағдыларды қамтымайды?', 'For example: which skills are not covered by the catalog?')} disabled={busy || availability !== 'available'} />
       <div className={styles.agentControls}><button className={styles.button} disabled={busy || availability !== 'available' || !question.trim()} type="submit">{busy ? t('Агент собирает факты…', 'Агент деректерді жинауда…', 'The agent is gathering facts…') : t('Получить ответ', 'Жауап алу', 'Get answer')}</button>
         {busy && <button className={`${styles.button} ${styles.secondary}`} type="button" onClick={() => active.current?.abort()}>{t('Остановить', 'Тоқтату', 'Stop')}</button>}
         <span className={styles.muted}>{number(question.length)}/{number(1200)}</span></div>
@@ -84,10 +90,10 @@ export function HRAgentPanel() {
     <div className={styles.agentSuggestions}>{suggestions.map(text => <button key={text} className={`${styles.button} ${styles.secondary}`} disabled={busy || availability !== 'available'} onClick={() => void start(text)}>{text}</button>)}</div>
     <details className={styles.action}><summary>{t('Коды ролей для фильтра поиска', 'Іздеу сүзгісіне арналған рөл кодтары', 'Role codes for the search filter')}</summary><p className={styles.muted}>{t('Для вопроса о конкретной роли используйте её код. Названия из датасета остаются в интерфейсе.', 'Нақты рөл туралы сұрақта оның кодын қолданыңыз. Деректердегі атаулар интерфейсте көрсетіледі.', 'Use the role code when asking about a specific role. Dataset names are displayed in the interface.')}</p>{roles.map(role => <p key={role.id}><code>{role.id}</code> — {catalogName(role.label, locale)}</p>)}</details>
     {stale && <p className={styles.notice} role="status">{t('Данные или выбранный сотрудник изменились. Запустите вопрос заново для актуального ответа.', 'Деректер немесе таңдалған қызметкер өзгерді. Өзекті жауап алу үшін сұрақты қайта жіберіңіз.', 'The data or selected employee changed. Run the question again for an up-to-date answer.')}</p>}
-    {result && <div className={styles.agentAnswer} role="status"><h3>{t(...agentStatusCopy[result.status])}</h3><p className={styles.muted}>{t('Шагов: {steps} · {latency} мс', 'Қадамдар: {steps} · {latency} мс', 'Steps: {steps} · {latency} ms', { steps: number(result.history.length), latency: number(result.latencyMs) })}{result.reason ? ` · ${localizeAgentReason(result.reason, locale)}` : ''}</p><p className={styles.agentText}>{result.status === 'verified' ? result.text : partialAgentSummary(result.history, locale)}</p>{result.status === 'verified' && <p className={styles.muted}>{t('Проверка сверяет числа и ссылки с результатами инструментов. Смысл выводов оценивает HR; исходные факты доступны в шагах ниже.', 'Тексеру сандар мен сілтемелерді құрал нәтижелерімен салыстырады. Қорытындылардың мағынасын HR бағалайды; бастапқы деректер төмендегі қадамдарда бар.', 'Verification checks numbers and references against tool results. HR evaluates the conclusions; the original facts are available in the steps below.')}</p>}</div>}
+    {result && <div className={styles.agentAnswer} role="status"><h3>{t(...agentStatusCopy[result.status])}</h3><p className={styles.muted}>{t('Шагов: {steps} · {latency} мс', 'Қадамдар: {steps} · {latency} мс', 'Steps: {steps} · {latency} ms', { steps: number(result.history.length), latency: number(result.latencyMs) })}{result.reason ? ` · ${localizeAgentReason(result.reason, locale)}` : ''}</p><p className={styles.agentText}>{conceal(result.status === 'verified' ? result.text : partialAgentSummary(result.history, locale))}</p>{result.status === 'verified' && <p className={styles.muted}>{t('Проверка сверяет числа и ссылки с результатами инструментов. Смысл выводов оценивает HR; исходные факты доступны в шагах ниже.', 'Тексеру сандар мен сілтемелерді құрал нәтижелерімен салыстырады. Қорытындылардың мағынасын HR бағалайды; бастапқы деректер төмендегі қадамдарда бар.', 'Verification checks numbers and references against tool results. HR evaluates the conclusions; the original facts are available in the steps below.')}</p>}</div>}
     {(busy || history.length > 0) && <div className={styles.action}><h3>{t('Как агент это посчитал', 'Агент мұны қалай есептеді', 'How the agent worked this out')}</h3>{history.map((entry, index) => <details key={entry.result.evidenceId} className={styles.agentStep}>
       <summary>{t('Шаг {step}. {tool} · фактов: {facts}', '{step}-қадам. {tool} · деректер: {facts}', 'Step {step}. {tool} · facts: {facts}', { step: number(index + 1), tool: t(...agentToolCopy[entry.call.name]), facts: number(entry.result.facts.length) })}</summary>
-      <p><code>{entry.result.evidenceId}</code></p><pre>{JSON.stringify({ arguments: entry.call.arguments, facts: entry.result.facts }, null, 2)}</pre>
+      <p><code>{entry.result.evidenceId}</code></p><pre>{conceal(JSON.stringify({ arguments: entry.call.arguments, facts: entry.result.facts }, null, 2))}</pre>
     </details>)}{busy && <p aria-live="polite">{t('Ожидаем следующий шаг…', 'Келесі қадамды күтудеміз…', 'Waiting for the next step…')}</p>}</div>}
   </section>;
 }

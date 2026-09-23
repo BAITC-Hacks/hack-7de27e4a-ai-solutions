@@ -611,6 +611,12 @@
   flex-wrap: wrap;
   margin-top: 23px;
 }
+.hrCreatedPill {
+  border-color: #acd9c2 !important;
+  background: #e6f6ee !important;
+  color: #006b48 !important;
+  font-weight: 650 !important;
+}
 .primaryButton,
 .secondaryButton {
   display: inline-flex;

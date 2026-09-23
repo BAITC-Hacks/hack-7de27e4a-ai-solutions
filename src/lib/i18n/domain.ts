@@ -643,6 +643,18 @@ const fixedMessages: readonly (readonly [
     "Data loaded. Changes last only for this session.",
   ],
   [
+    "Данные загружены повторно. Созданные HR-активности сброшены вместе с сессионными изменениями.",
+    "Данные загружены повторно. Созданные HR-активности сброшены вместе с сессионными изменениями.",
+    "Деректер қайта жүктелді. HR жасаған іс-шаралар сессиялық өзгерістермен бірге тазартылды.",
+    "Data reloaded. HR-created activities were cleared with the session changes.",
+  ],
+  [
+    "HR-активность создана. Рекомендации пересчитаны.",
+    "HR-активность создана. Рекомендации пересчитаны.",
+    "HR іс-шарасы жасалды. Ұсынымдар қайта есептелді.",
+    "HR activity created. Recommendations updated.",
+  ],
+  [
     "Активность завершена. Навыки и рекомендации пересчитаны.",
     "Активность завершена. Навыки и рекомендации пересчитаны.",
     "Іс-шара аяқталды. Дағдылар мен ұсынымдар қайта есептелді.",
@@ -824,6 +836,12 @@ const fixedMessages: readonly (readonly [
     "Ожидается дата в формате ГГГГ-ММ-ДД",
     "Күн ЖЖЖЖ-АА-КК пішімінде болуы керек",
     "Expected an ISO date in YYYY-MM-DD format",
+  ],
+  [
+    "Expected a valid calendar date YYYY-MM-DD",
+    "Ожидается существующая календарная дата в формате ГГГГ-ММ-ДД",
+    "ЖЖЖЖ-АА-КК пішіміндегі нақты күнтізбелік күн болуы керек",
+    "Expected a valid calendar date in YYYY-MM-DD format",
   ],
   [
     "Не удалось прочитать файлы. Выберите их повторно.",
@@ -1291,6 +1309,72 @@ export function localizeMessage(value: string, locale: Locale): string {
       `Неизвестный сотрудник: ${match[1]}`,
       `Белгісіз қызметкер: ${match[1]}`,
       `Unknown employee: ${match[1]}`,
+    ]);
+  if ((match = value.match(/^Unknown catalog event type: (.+)$/)))
+    return pick(locale, [
+      `Неизвестный тип активности в каталоге: ${match[1]}`,
+      `Каталогтағы іс-шара түрі белгісіз: ${match[1]}`,
+      `Unknown catalog event type: ${match[1]}`,
+    ]);
+  if ((match = value.match(/^Unknown role: (.+)$/)))
+    return pick(locale, [
+      `Неизвестная роль: ${match[1]}`,
+      `Белгісіз рөл: ${match[1]}`,
+      `Unknown role: ${match[1]}`,
+    ]);
+  if ((match = value.match(/^Unknown grade: (.+)$/)))
+    return pick(locale, [
+      `Неизвестный грейд: ${match[1]}`,
+      `Белгісіз деңгей: ${match[1]}`,
+      `Unknown grade: ${match[1]}`,
+    ]);
+  if ((match = value.match(/^Unknown skill: (.+)$/)))
+    return pick(locale, [
+      `Неизвестный навык: ${match[1]}`,
+      `Белгісіз дағды: ${match[1]}`,
+      `Unknown skill: ${match[1]}`,
+    ]);
+  if (value === "Self-paced events cannot have scheduled sessions")
+    return pick(locale, [
+      "У активности в своём темпе не может быть запланированных сессий",
+      "Өз қарқынымен өтетін іс-шарада жоспарланған сессиялар болмауы керек",
+      "Self-paced events cannot have scheduled sessions",
+    ]);
+  if (
+    (match = value.match(
+      /^At least one session must be on or after snapshot date (.+)$/,
+    ))
+  )
+    return pick(locale, [
+      `Хотя бы одна сессия должна быть не раньше даты среза ${match[1]}`,
+      `Кемінде бір сессия деректер күнінен ерте болмауы керек: ${match[1]}`,
+      `At least one session must be on or after snapshot date ${match[1]}`,
+    ]);
+  if (
+    (match = value.match(
+      /^Enrollment deadline cannot be before snapshot date (.+)$/,
+    ))
+  )
+    return pick(locale, [
+      `Дедлайн записи не может быть раньше даты среза ${match[1]}`,
+      `Тіркелу мерзімі деректер күнінен ерте болмауы керек: ${match[1]}`,
+      `Enrollment deadline cannot be before snapshot date ${match[1]}`,
+    ]);
+  if (
+    (match = value.match(
+      /^Enrollment deadline cannot be after first session (.+)$/,
+    ))
+  )
+    return pick(locale, [
+      `Дедлайн записи не может быть позже первой сессии ${match[1]}`,
+      `Тіркелу мерзімі бірінші сессиядан кеш болмауы керек: ${match[1]}`,
+      `Enrollment deadline cannot be after first session ${match[1]}`,
+    ]);
+  if ((match = value.match(/^Duplicate event identifier: (.+)$/)))
+    return pick(locale, [
+      `Повторяющийся идентификатор активности: ${match[1]}`,
+      `Іс-шара идентификаторы қайталанады: ${match[1]}`,
+      `Duplicate event identifier: ${match[1]}`,
     ]);
   if ((match = value.match(/^Missing role profile for career goal of (.+)$/)))
     return pick(locale, [
