@@ -15,6 +15,7 @@ import { nearestSession } from "../../domain/simulation/simulator";
 import { DatasetUpload } from "./DatasetUpload";
 import { Modal } from "./Modal";
 import { EmployeeExternalLearningSection } from "./external-learning-section";
+import { DevelopmentEconomy } from "../gamification/DevelopmentEconomy";
 import { useEmployeeExplanation } from "./useEmployeeExplanation";
 import {
   explanationStatusLabel,
@@ -1026,6 +1027,13 @@ export function EmployeeWorkspace() {
                       </div>
                     </details>
                   </section>
+                  {normalizedDataset && selectedEmployeeId && (
+                    <DevelopmentEconomy
+                      dataset={normalizedDataset}
+                      employeeId={selectedEmployeeId}
+                      ledger={state.ledger}
+                    />
+                  )}
                 </>
               ) : (
                 <div className={styles.welcome}>
