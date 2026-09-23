@@ -16,6 +16,8 @@ import { reviewRequestSchema } from "../../src/lib/evaluation/ai-contracts";
 import { requestAIExplanation } from "../../src/lib/evaluation/client";
 import { createDatasetAuditCases } from "../../src/lib/evaluation/dataset-audit";
 import { verifyAIReview } from "../../src/lib/evaluation/verifier";
+import { I18nProvider } from "../../src/lib/i18n/I18nProvider";
+import type { Locale } from "../../src/lib/i18n/core";
 import {
   createEmployeeStore,
   type EmployeeStore,
@@ -53,17 +55,20 @@ function previewTopActivity(store: EmployeeStore) {
 }
 
 /** Exercise the actual React bridge and context without installing a second renderer. */
-function readBridge(store: EmployeeStore, access: "hr" | "employee" = "hr") {
+function readBridge(store: EmployeeStore, access: "hr" | "employee" = "hr", locale: Locale = "ru") {
   let integration: TrustIntegration | null = null;
   function Probe() {
     integration = useTrustIntegration();
     return null;
   }
   renderToStaticMarkup(
-    createElement(EmployeeStoreTrustBridge, {
-      store,
-      access,
-      children: createElement(Probe),
+    createElement(I18nProvider, {
+      initialLocale: locale,
+      children: createElement(EmployeeStoreTrustBridge, {
+        store,
+        access,
+        children: createElement(Probe),
+      }),
     }),
   );
   expect(integration).not.toBeNull();
@@ -71,6 +76,18 @@ function readBridge(store: EmployeeStore, access: "hr" | "employee" = "hr") {
 }
 
 describe("one real dataset across Employee, HR and Trust", () => {
+  it.each(["ru", "kk", "en"] as const)("uses UI language %s for Trust AI without changing the employee or evidence", (locale) => {
+    const store = readyStore();
+    const before = store.getState();
+    expect(before.dataset!.employees.find((employee) => employee.id === "E0028")!.preferredLanguage).toBe("kk");
+    const original = readBridge(store, "hr", "ru").reviewRequest!;
+    const localized = readBridge(store, "hr", locale).reviewRequest!;
+    expect(localized.language).toBe(locale);
+    expect(localized.candidates).toEqual(original.candidates);
+    expect(store.getState()).toBe(before);
+    expect(store.getState().ledger).toHaveLength(0);
+  });
+
   it("keeps HR aggregates and committed data unchanged during a what-if preview", () => {
     const store = readyStore();
     const before = store.getState();
@@ -192,7 +209,7 @@ describe("one real dataset across Employee, HR and Trust", () => {
     const request = readBridge(store).reviewRequest!;
     expect(reviewRequestSchema.safeParse(request).success).toBe(true);
     expect(Object.keys(request).sort()).toEqual(["candidates", "language"]);
-    expect(request.language).toBe("kk");
+    expect(request.language).toBe("ru");
     expect(request.candidates.map((c) => c.id)).toEqual(
       state.views.E0028.recommendations.map((r) => r.activityId),
     );

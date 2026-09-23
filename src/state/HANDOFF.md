@@ -1,7 +1,7 @@
 # Employee Digital Twin — handoff Манахнбета
 
 **Финальная интеграция:** общий AppProviders/AppShell подключает Employee, HR и Trust
-к sharedEmployeeStore. AI-объяснения подключены к карточкам. Актуальные 94 теста,
+к sharedEmployeeStore. AI-объяснения подключены к карточкам. Актуальные 112 тестов,
 полная production-сборка с TypeScript и сквозной browser QA описаны в `docs/INTEGRATION.md`;
 они дополняют и заменяют ранние ограничения проверки ниже.
 

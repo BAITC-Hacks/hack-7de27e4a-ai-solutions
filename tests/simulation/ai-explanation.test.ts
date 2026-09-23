@@ -49,6 +49,40 @@ afterEach(() => {
 });
 
 describe("Employee optional AI explanation integration", () => {
+  it("uses the selected UI language and never displays a verified response from the previous language", async () => {
+    const rec = recommendation("EV_A");
+    const currentRequest = employeeReviewRequest([rec], "en");
+    const priorResponse = responseFor(employeeReviewRequest([rec], "kk"));
+    const englishFallback =
+      "Relevant skills, participation and feasibility support this step.";
+    expect(
+      recommendationExplanation(rec, priorResponse, englishFallback, "en"),
+    ).toBe(englishFallback);
+    expect(recommendationExplanation(rec, null, englishFallback, "en")).toBe(
+      englishFallback,
+    );
+    const receive = vi.fn();
+    cleanups.push(
+      startEmployeeExplanation(currentRequest, receive, async (_url, init) => {
+        expect(JSON.parse(String(init?.body)).language).toBe("en");
+        return Response.json(priorResponse);
+      }),
+    );
+    await vi.waitFor(() => expect(receive).toHaveBeenCalledOnce());
+    expect(receive.mock.calls[0][0].status).toBe("blocked");
+    expect(
+      recommendationExplanation(
+        rec,
+        receive.mock.calls[0][0],
+        englishFallback,
+        "en",
+      ),
+    ).toBe(englishFallback);
+    const current = responseFor(currentRequest);
+    expect(recommendationExplanation(rec, current, englishFallback, "en")).toBe(
+      current.reasons[0].explanation,
+    );
+  });
   it("sends only numeric evidence for the displayed top three in unchanged order", async () => {
     const recommendations = ["EV_B", "EV_A", "EV_C", "EV_D"].map(
       recommendation,

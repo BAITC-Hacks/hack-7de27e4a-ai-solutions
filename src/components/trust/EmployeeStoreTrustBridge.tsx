@@ -1,5 +1,7 @@
 "use client";
 import { useMemo, useSyncExternalStore, type ReactNode } from "react";
+import { useI18n } from "@/lib/i18n/I18nProvider";
+import { catalogName } from "@/lib/i18n/domain";
 import {
   normalizedSource,
   projectEmployeeStore,
@@ -27,6 +29,7 @@ export function EmployeeStoreTrustBridge({
   coreEvaluationCases?: readonly EvaluationCase[];
   children: ReactNode;
 }) {
+  const { locale, t } = useI18n();
   const snapshot = useSyncExternalStore(
     store.subscribe,
     store.getState,
@@ -43,10 +46,6 @@ export function EmployeeStoreTrustBridge({
         (e) => e.employeeId === snapshot.selectedEmployeeId,
       );
       const source = normalizedSource(snapshot);
-      const language =
-        employee && source
-          ? source.employeesById[employee.employeeId].preferredLanguage
-          : "ru";
       const reviewRequest = selected
         ? buildReviewRequest(
             selected.recommendations.map((rec) => ({
@@ -55,7 +54,7 @@ export function EmployeeStoreTrustBridge({
                 FACTORS.map((f) => [f, rec.factorScores[f]]),
               ) as Record<Factor, number>,
             })),
-            language,
+            locale,
           )
         : undefined;
       return {
@@ -69,7 +68,7 @@ export function EmployeeStoreTrustBridge({
               : "ready",
         challenge: employee
           ? {
-              label: `${employee.role} · ${employee.grade} → ${employee.target?.grade ?? "Цель не задана"}`,
+              label: `${catalogName(employee.role, locale)} · ${catalogName(employee.grade, locale)} → ${employee.target ? `${catalogName(employee.target.role, locale)} · ${catalogName(employee.target.grade, locale)}` : t("Цель не задана", "Мақсат белгіленбеген", "No target")}`,
               employee,
             }
           : undefined,
@@ -90,7 +89,7 @@ export function EmployeeStoreTrustBridge({
     } catch {
       return { access, state: "invalid", analytics: null };
     }
-  }, [snapshot, access, coreEvaluationCases]);
+  }, [snapshot, access, coreEvaluationCases, locale, t]);
   return (
     <TrustIntegrationProvider value={value}>
       {children}
